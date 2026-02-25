@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ宝藏 EasyDesign</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link rel="stylesheet" href="v2_xhs.css">
+    <script>
+        // 防止主题闪烁：在CSS加载前立即应用保存的主题
+        (function(){var t=localStorage.getItem('easydesign_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();
+    </script>
+    <style>
+        :root {
+            --brand: #0099FF;
+            --brand-light: rgba(0, 153, 255, 0.12);
+            --brand-glow: rgba(0, 153, 255, 0.4);
+            --bg: #0D1117;
+            --bg-secondary: #161B22;
+            --bg-tertiary: #21262D;
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(139, 148, 158, 0.8);
+            --white: #1C2128;
+            --border: #30363D;
+            --accent-purple: #A855F7;
+            --accent-pink: #EC4899;
+            --accent-cyan: #06B6D4;
+            --gradient-1: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
+            --gradient-2: linear-gradient(90deg, #4FACFE, #00F2FE);
+            /* 预览区浅色变量 */
+            --preview-bg: #F0F5FF;
+            --preview-bg-secondary: #FFFFFF;
+            --preview-text-primary: rgba(0, 0, 0, 0.90);
+            --preview-text-secondary: rgba(60, 60, 67, 0.56);
+            --preview-border: #E5E5E7;
+            /* 主题过渡 */
+            --theme-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* 浅色主题 */
+        [data-theme="light"] {
+            --bg: #F5F7FA;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #EDF0F5;
+            --text-primary: rgba(0, 0, 0, 0.88);
+            --text-secondary: rgba(60, 60, 67, 0.6);
+            --white: #FFFFFF;
+            --border: #E0E4EA;
+            --brand-light: rgba(0, 153, 255, 0.08);
+            --brand-glow: rgba(0, 153, 255, 0.25);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* 主题过渡动画 - 仅应用于编辑器UI */
+        body, .app-header, .global-panel, .local-panel, .xhs-edit-panel,
+        .global-panel-item, .local-panel-content, .local-panel-empty,
+        .btn-primary, .btn-secondary, .add-menu, .add-menu-item,
+        .template-modal, .template-modal-overlay, .template-modal-item,
+        .text-format-toolbar, .paste-toast, .export-overlay,
+        .lp-action-btn, .lp-toggle, .gp-action-btn,
+        .export-unified-trigger, .export-panel, .export-panel-opt, .mode-switcher, .mode-btn,
+        .sticker-picker-item, .fmt-btn, .fmt-color-dot,
+        .phone-view-selector-dialog,
+        .toolbar-menu-trigger, .toolbar-dropdown-inner, .toolbar-dropdown-item {
+            transition: background-color var(--theme-transition),
+                        border-color var(--theme-transition),
+                        color var(--theme-transition),
+                        box-shadow var(--theme-transition);
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3), 0 0 40px rgba(0, 212, 255, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 60px rgba(0, 212, 255, 0.2); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        body { 
+            font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            background: var(--bg);
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--text-primary); 
+            min-height: 100vh;
+        }
+        [data-theme="light"] body {
+            background-image:
+                linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+        }
+        .app-header { 
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100; 
+            background: var(--bg-secondary); 
+            border-bottom: 1px solid var(--border); 
+            padding: 8px 32px; 
+            display: flex; align-items: center; justify-content: space-between; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            height: 64px;
+        }
+        [data-theme="light"] .app-header { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .app-header h1 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 12px; color: #E6F7FF; }
+        [data-theme="light"] .app-header h1 { color: #1a1a1a; }
+        .app-header h1::before { content: ''; width: 40px; height: 40px; background: url('appicon.png') center/contain no-repeat; border-radius: 8px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .export-group { display: flex; align-items: center; gap: 0; }
+        .export-unified-trigger {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border: 1px solid var(--brand);
+            background: var(--brand); border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: 500;
+            font-family: inherit; color: #fff;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .export-unified-trigger svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .export-unified-trigger:hover { background: #007acc; border-color: #007acc; color: #fff; }
+
+        /* ===== 统一导出面板 ===== */
+        .export-panel-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .export-panel-overlay.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        [data-theme="light"] .export-panel-overlay { background: rgba(0,0,0,0.3); }
+        .export-panel {
+            background: var(--bg-secondary); border-radius: 16px;
+            width: 420px; max-width: 90vw;
+            display: flex; flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+            border: 1px solid var(--border);
+            animation: slideIn 0.3s ease-out;
+            overflow: hidden;
+        }
+        [data-theme="light"] .export-panel { box-shadow: 0 24px 64px rgba(0,0,0,0.15), 0 0 0 1px var(--border); }
+        .export-panel-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .export-panel-header h3 {
+            font-size: 16px; font-weight: 600; color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .export-panel-header h3 svg { width: 18px; height: 18px; color: var(--brand); }
+        .export-panel-close {
+            width: 32px; height: 32px; border: none; background: var(--bg-tertiary);
+            border-radius: 8px; cursor: pointer; font-size: 18px;
+            color: var(--text-secondary); transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .export-panel-close:hover { background: rgba(239,68,68,0.1); color: #EF4444; }
+        .export-panel-body { padding: 20px 24px 24px; }
+        .export-panel-section { margin-bottom: 20px; }
+        .export-panel-section:last-child { margin-bottom: 0; }
+        .export-panel-section-title {
+            font-size: 12px; font-weight: 600; color: var(--text-secondary);
+            margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .export-panel-options { display: flex; gap: 8px; flex-wrap: wrap; }
+        .export-panel-opt {
+            padding: 8px 16px; border: 1px solid var(--border);
+            border-radius: 8px; background: transparent;
+            cursor: pointer; font-size: 12px; font-family: inherit;
+            color: var(--text-primary); font-weight: 500;
+            transition: all 0.15s;
+        }
+        .export-panel-opt:hover { border-color: var(--brand); color: var(--brand); }
+        .export-panel-opt.active {
+            border-color: var(--brand); color: var(--brand);
+            background: var(--brand-light); font-weight: 600;
+        }
+        .export-segment-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .export-segment-custom {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .export-segment-custom input {
+            width: 52px; padding: 7px 8px; border: 1px solid var(--border);
+            border-radius: 8px; background: transparent; font-size: 12px;
+            font-family: inherit; color: var(--text-primary); text-align: center;
+            outline: none; transition: border-color 0.15s;
+        }
+        .export-segment-custom input:focus { border-color: var(--brand); }
+        .export-segment-custom span {
+            font-size: 12px; color: var(--text-secondary);
+        }
+        .export-panel-actions {
+            margin-top: 20px; display: flex; gap: 10px;
+        }
+        .export-panel-actions .btn-primary {
+            flex: 1; padding: 10px 0; text-align: center;
+            font-size: 13px; font-weight: 600; border-radius: 10px;
+        }
+        .export-panel-actions .btn-primary:hover {
+            transform: none; box-shadow: 0 4px 16px rgba(0,153,255,0.3);
+        }
+        .export-panel-divider {
+            height: 1px; background: var(--border); margin: 0 0 20px;
+        }
+        .header-center { display: flex; align-items: center; gap: 16px; }
+        .scale-control { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .scale-control input[type="range"] { width: 100px; accent-color: var(--brand); }
+        .canvas-area { padding-top: 64px; min-height: 100vh; display: flex; justify-content: center; padding-bottom: 80px; overflow: auto; padding-left: 260px; padding-right: 240px; }
+        .canvas-scroll { padding: 40px 20px; display: flex; justify-content: center; }
+        .canvas-wrapper { transform-origin: top center; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        /* 预览区 - 浅色样式 */
+        .canvas { width: 375px; background: var(--preview-bg-secondary); box-shadow: 0 8px 48px rgba(0,0,0,0.15), 0 0 0 1px var(--preview-border); border-radius: 12px; overflow: visible; position: relative; }
+        .canvas-inner { padding: 70px 24px 40px; min-height: 300px; }
+        .cv-section { position: relative; padding: 4px 0; transition: all 0.15s; border-radius: 6px; }
+        .cv-section + .cv-section { margin-top: 0; }
+        .cv-section-marker { position: absolute; left: -20px; top: 0; bottom: 0; width: 3px; border-radius: 2px; opacity: 0; transition: opacity 0.2s; }
+        .cv-section:hover .cv-section-marker, .cv-section.active .cv-section-marker { opacity: 1; }
+        .cv-section-label { position: absolute; left: -56px; top: 0; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .cv-section:hover .cv-section-label, .cv-section.active .cv-section-label { opacity: 1; }
+        .cv-section[data-color="blue"] .cv-section-marker { background: #0099FF; }
+        .cv-section[data-color="blue"] .cv-section-label { background: rgba(0,153,255,0.1); color: #0099FF; }
+        .cv-section[data-color="purple"] .cv-section-marker { background: #7B61FF; }
+        .cv-section[data-color="purple"] .cv-section-label { background: rgba(123,97,255,0.1); color: #7B61FF; }
+        .cv-section[data-color="green"] .cv-section-marker { background: #34C759; }
+        .cv-section[data-color="green"] .cv-section-label { background: rgba(52,199,89,0.1); color: #34C759; }
+        .cv-section[data-color="orange"] .cv-section-marker { background: #FF9500; }
+        .cv-section[data-color="orange"] .cv-section-label { background: rgba(255,149,0,0.1); color: #FF9500; }
+        .cv-section[data-color="pink"] .cv-section-marker { background: #FF2D55; }
+        .cv-section[data-color="pink"] .cv-section-label { background: rgba(255,45,85,0.1); color: #FF2D55; }
+        .cv-section:hover { background: rgba(0, 153, 255, 0.02); }
+        .cv-section.active { background: rgba(0, 153, 255, 0.03); }
+        .global-panel { position: fixed; left: 0; top: 64px; width: 240px; height: calc(100vh - 64px); background: var(--bg-secondary); border-right: 1px solid var(--border); z-index: 50; display: flex; flex-direction: column; overflow: hidden; }
+        .global-panel-section { display: flex; flex-direction: column; overflow: hidden; }
+        .global-panel-bg { padding: 12px 16px 8px; flex-shrink: 0; }
+        .global-panel-bg-header { padding: 0 0 8px; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .global-panel-bg-header h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .global-panel-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 10px; }
+        .global-panel-manage { flex: 1; overflow: hidden; }
+        .global-panel-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+        .global-panel-header h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .global-panel-header .panel-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: var(--bg-tertiary); color: var(--brand); font-weight: 500; border: 1px solid var(--border); }
+        .bg-color-grid { display: flex; flex-direction: column; gap: 12px; }
+        .bg-color-row { display: flex; flex-direction: column; gap: 6px; }
+        .bg-color-row-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+        .bg-color-row-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .global-panel-list { flex: 1; overflow-y: auto; padding: 8px; }
+        .global-panel-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1.5px solid transparent; gap: 8px; animation: fadeIn 0.3s ease-out; }
+        .global-panel-item:hover { background: var(--bg-tertiary); transform: translateX(4px); }
+        .global-panel-item.active { background: var(--brand-light); border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
+        .global-panel-item.hidden-section { opacity: 0.45; }
+        .global-panel-item-color { width: 4px; height: 24px; border-radius: 2px; flex-shrink: 0; }
+        .global-panel-item-info { flex: 1; min-width: 0; }
+        .global-panel-item-title { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .global-panel-item-desc { font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .global-panel-item-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: all 0.2s; }
+        .global-panel-item:hover .global-panel-item-actions, .global-panel-item.active .global-panel-item-actions { opacity: 1; }
+        .gp-action-btn { display: flex; align-items: center; gap: 3px; padding: 3px 6px; border: none; background: transparent; border-radius: 4px; cursor: pointer; font-size: 10px; font-family: inherit; color: var(--text-secondary); transition: all 0.2s; white-space: nowrap; }
+        .gp-action-btn:hover { background: var(--bg-tertiary); color: var(--brand); }
+        .gp-action-btn.delete-action:hover { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+        .gp-action-btn .gp-icon { font-size: 12px; line-height: 1; }
+        .bg-color-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: all 0.3s; position: relative; }
+        .bg-color-swatch:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .bg-color-swatch.active { border-color: var(--brand); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--brand); }
+        .bg-color-custom { background: var(--bg-tertiary); overflow: hidden; }
+        .bg-color-custom .bg-color-gradient { position: absolute; inset: 3px; border-radius: 50%; background: conic-gradient(from 0deg, #FF0000, #FFFF00, #00FF00, #00FFFF, #0000FF, #FF00FF, #FF0000); pointer-events: none; }
+        .bg-color-custom .bg-color-input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .bg-color-custom.active { background: var(--custom-bg, var(--bg-tertiary)); }
+        .bg-color-custom.active .bg-color-gradient { display: none; }
+        .local-panel { position: fixed; right: 0; top: 64px; width: 220px; height: calc(100vh - 64px); background: var(--bg-secondary); border-left: 1px solid var(--border); z-index: 50; display: flex; flex-direction: column; overflow: hidden; }
+        .local-panel-empty { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-secondary); font-size: 12px; padding: 20px; text-align: center; }
+        .local-panel-empty .empty-icon { font-size: 28px; opacity: 0.3; }
+        .local-panel-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); }
+        .local-panel-header h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .local-panel-header .el-type-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: var(--brand-light); color: var(--brand); font-weight: 500; border: 1px solid var(--brand); }
+        .local-panel-content { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .local-panel-section { margin-bottom: 16px; }
+        .local-panel-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px; }
+        .lp-action-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid var(--border); background: var(--bg-secondary); border-radius: 8px; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--text-primary); transition: all 0.3s; margin-bottom: 6px; }
+        .lp-action-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); transform: translateY(-1px); }
+        .lp-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .lp-action-btn:disabled:hover { border-color: var(--border); color: var(--text-primary); background: var(--bg-secondary); transform: none; box-shadow: none; }
+        .lp-action-btn.delete-action { border-color: transparent; color: var(--text-secondary); background: transparent; }
+        .lp-action-btn.delete-action:hover { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); }
+        .lp-action-btn .lp-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .lp-action-btn .lp-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .lp-action-btn .lp-label { flex: 1; text-align: left; }
+        .lp-toggle { position: relative; width: 32px; height: 18px; border-radius: 9px; background: var(--bg-tertiary); cursor: pointer; transition: all 0.3s; flex-shrink: 0; border: 1px solid var(--border); }
+        .lp-toggle.active { background: var(--brand); border-color: var(--brand); }
+        .lp-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-primary); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .lp-toggle.active::after { transform: translateX(14px); background: #fff; }
+        /* 预览区元素 - 浅色样式 */
+        .cv-element { position: relative; transition: outline 0.15s; outline: 2px solid transparent; outline-offset: 2px; border-radius: 3px; }
+        .cv-element:hover { outline-color: rgba(0, 153, 255, 0.15); }
+        .cv-element.selected { outline-color: rgba(0, 153, 255, 0.4); }
+        .cv-element + .cv-element { margin-top: 12px; }
+        .cv-h1 { font-size: 20px; font-weight: 600; text-align: center; letter-spacing: 0.25px; line-height: 1.3; color: var(--preview-text-primary); }
+        .cv-subtitle-wrap { text-align: center; }
+        .cv-subtitle-inner { display: inline-block; }
+        .cv-subtitle { font-size: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px; line-height: 1.3; color: var(--preview-text-primary); }
+        .cv-subtitle-deco { position: relative; width: 100%; height: 12px; margin-top: 2px; display: flex; align-items: center; justify-content: center; }
+        .cv-subtitle-deco::before, .cv-subtitle-deco::after { content: ''; height: 3px; flex: 1; max-width: 120px; background: #0099FF; }
+        .cv-subtitle-deco::before { margin-right: -2px; }
+        .cv-subtitle-deco::after { margin-left: -2px; }
+        .cv-subtitle-deco-center { width: 8px; height: 8px; background: #0099FF; transform: rotate(45deg); border-radius: 1px; flex-shrink: 0; position: relative; z-index: 1; }
+        .cv-body { font-size: 16px; font-weight: 400; line-height: 1.6; text-align: center; letter-spacing: 0.25px; color: var(--preview-text-primary); }
+        .cv-note { font-size: 14px; font-weight: 400; line-height: 1.6; text-align: center; letter-spacing: 0.25px; color: rgba(60, 60, 67, 0.60); }
+        .cv-highlight { color: #0099FF; font-weight: 600; }
+        .cv-image-block { text-align: center; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .cv-image-block img { max-width: 100%; display: block; margin: 0 auto; }
+        .cv-image-block video { max-width: 100%; display: block; margin: 0 auto; border-radius: 8px; }
+        .cv-image-block lottie-player { max-width: 100%; display: block; margin: 0 auto; }
+        .cv-media-type-tag { position: absolute; top: 4px; right: 4px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(0,0,0,0.5); color: #fff; pointer-events: none; line-height: 1.4; }
+        .cv-image-resize-slider { width: 120px; margin: 8px auto 0; display: flex; align-items: center; gap: 6px; }
+        .cv-image-resize-slider input[type="range"] { flex: 1; height: 4px; -webkit-appearance: none; appearance: none; background: var(--preview-border); border-radius: 2px; outline: none; cursor: pointer; }
+        .cv-image-resize-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #0099FF; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .cv-image-resize-slider .resize-label { font-size: 11px; color: var(--preview-text-secondary); min-width: 32px; text-align: center; user-select: none; }
+        .cv-editable { cursor: text; min-height: 1em; position: relative; }
+        .cv-editable:empty::before { content: attr(data-placeholder); color: var(--preview-text-secondary); pointer-events: none; font-style: italic; opacity: 0.6; }
+        .cv-editable:focus { outline: none; background: rgba(0, 153, 255, 0.04); border-radius: 4px; }
+        /* 预览区 - 浅色样式 */
+        .add-element-btn { display: flex; align-items: center; justify-content: center; margin-top: 12px; padding: 6px 0; opacity: 0; transition: opacity 0.2s; position: relative; }
+        .cv-section:hover .add-element-btn { opacity: 1; }
+        .add-element-btn button { padding: 4px 14px; border: 1px dashed var(--preview-border); border-radius: 6px; background: transparent; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--preview-text-secondary); transition: all 0.15s; }
+        .add-element-btn button:hover { border-color: #0099FF; color: #0099FF; background: rgba(0, 153, 255, 0.08); }
+        .add-element-btn > .add-menu { position: absolute; bottom: calc(100% - 4px); left: 50%; transform: translateX(-50%); display: none; opacity: 0; transition: opacity 0.15s ease-out; }
+        .add-section-between { display: flex; align-items: center; justify-content: center; height: 24px; position: relative; z-index: 5; }
+        .add-section-between .add-line { position: absolute; top: 50%; left: -12px; right: -12px; height: 1px; background: transparent; transition: background 0.2s; }
+        .add-section-between:hover .add-line { background: #0099FF; opacity: 0.3; }
+        .add-section-between .add-trigger { position: relative; width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid var(--preview-border); color: var(--preview-text-secondary); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.08); z-index: 2; }
+        .add-section-between:hover .add-trigger { opacity: 1; }
+        .add-section-between .add-trigger:hover { background: #0099FF; color: #FFFFFF; border-color: #0099FF; transform: scale(1.1); }
+        .add-menu { position: absolute; background: var(--bg-secondary); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--border); padding: 8px; display: none; z-index: 50; white-space: nowrap; }
+        .add-menu.show { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; animation: fadeIn 0.2s ease-out; }
+        .add-element-btn > .add-menu,
+        .canvas-add-bottom > .add-menu { white-space: normal; }
+        .add-element-btn:hover > .add-menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; opacity: 1; animation: fadeIn 0.15s ease-out; }
+        .canvas-add-bottom:hover > .add-menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; opacity: 1; animation: fadeIn 0.15s ease-out; }
+        .add-menu-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px; border: 1.5px solid var(--border); background: var(--bg-tertiary); border-radius: 8px; cursor: pointer; transition: all 0.2s; min-width: 72px; width: auto; font-family: inherit; }
+        .add-menu-item:hover { border-color: var(--brand); background: var(--brand-light); transform: translateY(-2px); }
+        .add-menu-item:hover .add-menu-label { color: var(--brand); }
+        .add-menu-thumb { width: 60px; height: 40px; border-radius: 4px; background: var(--preview-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+        .add-menu-label { font-size: 11px; color: var(--text-primary); font-weight: 500; white-space: nowrap; line-height: 1; }
+        .cv-search-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 4px 0; }
+        .cv-search-bar { display: inline-flex; align-items: center; background: #0099FF; border-radius: 100px; padding: 5px 5px 5px 5px; gap: 0; max-width: 100%; }
+        .cv-search-logo { display: flex; align-items: center; justify-content: center; padding: 0 6px 0 8px; flex-shrink: 0; }
+        .cv-search-logo svg { width: 46px; height: 19px; }
+        .cv-search-input-wrap { display: flex; align-items: center; background: #FFFFFF; border-radius: 100px; padding: 6px 12px; gap: 6px; min-width: 80px; }
+        .cv-search-text { font-size: 16px; font-family: 'PingFang SC', -apple-system, sans-serif; font-weight: 500; color: #1A1C1E; outline: none; border: none; white-space: nowrap; min-width: 30px; line-height: 1.5; }
+        .cv-search-text:empty:before { content: attr(data-placeholder); color: #999; }
+        .cv-search-icon { flex-shrink: 0; display: flex; align-items: center; }
+        .cv-search-slogan { font-size: 14px; font-family: 'PingFang SC', -apple-system, sans-serif; font-weight: 400; color: rgba(0, 0, 0, 0.90); letter-spacing: 0.25px; text-align: center; outline: none; border: none; min-width: 60px; line-height: 1.5; }
+        .cv-search-slogan:empty:before { content: attr(data-placeholder); color: #999; }
+        .canvas-add-bottom { padding: 20px 24px; display: flex; justify-content: center; position: relative; }
+        .add-bottom-btn { display: flex; align-items: center; gap: 6px; padding: 10px 20px; border: 1.5px dashed var(--preview-border); border-radius: 10px; background: transparent; cursor: pointer; font-size: 13px; font-family: inherit; color: var(--preview-text-secondary); transition: all 0.2s; }
+        .add-bottom-btn:hover { border-color: #0099FF; color: #0099FF; background: rgba(0, 153, 255, 0.06); }
+        .canvas-add-bottom > .add-menu { position: absolute; bottom: calc(100% - 4px); left: 50%; transform: translateX(-50%); display: none; opacity: 0; transition: opacity 0.15s ease-out; }
+        .cv-image-placeholder { border: 2px dashed var(--preview-border); border-radius: 8px; padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s; color: var(--preview-text-secondary); font-size: 13px; }
+        .cv-image-placeholder:hover { border-color: #0099FF; background: rgba(0, 153, 255, 0.04); color: #0099FF; }
+        .cv-image-placeholder .upload-icon { font-size: 24px; margin-bottom: 4px; opacity: 0.4; }
+        /* 表情包组件 */
+        .cv-sticker-wrap { text-align: center; padding: 8px 0; }
+        .cv-sticker-img { object-fit: contain; border-radius: 4px; }
+        .cv-sticker-placeholder { border: 2px dashed var(--preview-border); border-radius: 8px; padding: 20px 16px; text-align: center; color: var(--preview-text-secondary); font-size: 12px; }
+        /* 表情包选择面板 */
+        .sticker-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px 10px; max-height: 240px; overflow-y: auto; }
+        .sticker-picker-item { border: 2px solid transparent; border-radius: 8px; cursor: pointer; overflow: hidden; transition: all 0.15s; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; padding: 4px; aspect-ratio: 1; }
+        .sticker-picker-item:hover { border-color: rgba(0,153,255,0.4); background: rgba(0,153,255,0.06); transform: scale(1.05); }
+        .sticker-picker-item.active { border-color: #0099FF; background: rgba(0,153,255,0.1); box-shadow: 0 0 8px rgba(0,153,255,0.2); }
+        .sticker-picker-item img { width: 100%; height: 100%; object-fit: contain; }
+        .btn-primary { padding: 8px 20px; background: var(--brand); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4); }
+        .btn-primary:hover::before { left: 100%; }
+        .btn-secondary { padding: 8px 20px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.3s; }
+        .btn-secondary:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); transform: translateY(-1px); }
+        .template-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+        .template-modal-overlay.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        .template-modal { background: var(--bg-secondary); border-radius: 16px; padding: 28px; width: 400px; max-height: 60vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px var(--border); border: 1px solid var(--border); animation: slideIn 0.3s ease-out; }
+        .template-modal h3 { font-size: 16px; margin-bottom: 16px; color: var(--text-primary); }
+        .template-modal-list { display: flex; flex-direction: column; gap: 8px; }
+        .template-modal-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.3s; background: var(--bg-tertiary); }
+        .template-modal-item:hover { border-color: var(--brand); background: var(--brand-light); transform: translateX(4px); }
+        .template-modal-item .tpl-name { font-size: 14px; color: var(--text-primary); }
+        .template-modal-item .tpl-del { font-size: 18px; color: var(--text-secondary); cursor: pointer; padding: 4px; transition: all 0.2s; }
+        .template-modal-item .tpl-del:hover { color: #EF4444; transform: scale(1.1); }
+        .template-modal-empty { text-align: center; padding: 24px; color: var(--text-secondary); font-size: 13px; }
+        .template-modal-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+        .export-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+        .export-overlay.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        .export-overlay .spinner { width: 44px; height: 44px; border: 3px solid transparent; border-top-color: var(--brand); border-right-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .export-overlay .export-text { color: var(--text-primary); font-size: 14px; }
+        .export-overlay .export-progress { color: var(--text-secondary); font-size: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .text-format-toolbar { position: fixed; z-index: 150; background: var(--bg-secondary); border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--border); padding: 6px; display: none; align-items: center; gap: 2px; border: 1px solid var(--border); }
+        .text-format-toolbar.show { display: flex; animation: fadeIn 0.2s ease-out; }
+        .text-format-toolbar::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 12px; height: 6px; clip-path: polygon(0 0, 100% 0, 50% 100%); background: var(--bg-secondary); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+        .fmt-btn { width: 32px; height: 32px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; color: var(--text-primary); transition: all 0.2s; }
+        .fmt-btn:hover { background: var(--bg-tertiary); color: var(--brand); }
+        .fmt-btn.active { background: var(--brand-light); color: var(--brand); }
+        .fmt-btn-bold { font-weight: 800; font-size: 15px; }
+        .fmt-divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+        .fmt-color-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; }
+        .fmt-color-dot:hover { transform: scale(1.2); border-color: var(--text-primary); }
+        .fmt-color-dot.active { border-color: var(--brand); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--brand); }
+        .fmt-color-label { font-size: 11px; color: var(--text-secondary); padding: 0 4px; white-space: nowrap; }
+        /* 预览区 - 浅色样式 */
+        .cv-section.dragging { opacity: 0.4; outline: 2px dashed #0099FF; outline-offset: -2px; }
+        .cv-section.drag-over-top::before { content: ''; position: absolute; top: -4px; left: -20px; right: -44px; height: 3px; background: #0099FF; border-radius: 2px; z-index: 20; }
+        .cv-section.drag-over-bottom::after { content: ''; position: absolute; bottom: -4px; left: -20px; right: -44px; height: 3px; background: #0099FF; border-radius: 2px; z-index: 20; }
+        .cv-section-drag-handle { position: absolute; left: -52px; top: 50%; transform: translateY(-50%); width: 20px; height: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: grab; opacity: 0; transition: opacity 0.2s; z-index: 10; border-radius: 4px; }
+        .cv-section-drag-handle:active { cursor: grabbing; }
+        .cv-section:hover .cv-section-drag-handle { opacity: 0.5; }
+        .cv-section:hover .cv-section-drag-handle:hover { opacity: 1; background: rgba(0, 153, 255, 0.1); }
+        .cv-section-drag-handle .drag-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--preview-text-secondary); }
+        /* 预览区 - 浅色样式 */
+        .cv-element.el-hidden { opacity: 0.3; position: relative; }
+        .cv-element.el-hidden::after { content: '已隐藏'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; color: var(--preview-text-secondary); background: rgba(255,255,255,0.9); padding: 2px 8px; border-radius: 4px; pointer-events: none; border: 1px solid var(--preview-border); }
+        .cv-section.section-hidden > .cv-element { opacity: 0.3; }
+        .paste-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--bg-secondary); color: var(--text-primary); padding: 12px 28px; border-radius: 10px; font-size: 13px; z-index: 300; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .paste-toast.show { transform: translateX(-50%) translateY(0); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        /* ===== 浅色主题额外覆盖 ===== */
+        [data-theme="light"] .export-unified-trigger:hover { color: #fff; }
+        [data-theme="light"] .export-panel { box-shadow: 0 24px 64px rgba(0,0,0,0.15), 0 0 0 1px var(--border); }
+        [data-theme="light"] .global-panel-item.active { background: rgba(0, 153, 255, 0.06); border-color: rgba(0, 153, 255, 0.2); box-shadow: 0 0 12px rgba(0, 153, 255, 0.06); }
+        [data-theme="light"] .add-menu { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px var(--border); }
+        [data-theme="light"] .template-modal { box-shadow: 0 16px 48px rgba(0,0,0,0.15), 0 0 0 1px var(--border); }
+        [data-theme="light"] .export-panel-overlay { background: rgba(0,0,0,0.3); }
+        [data-theme="light"] .text-format-toolbar { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px var(--border); }
+        [data-theme="light"] .paste-toast { box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        [data-theme="light"] .export-overlay { background: rgba(255,255,255,0.8); }
+        [data-theme="light"] .template-modal-overlay { background: rgba(0,0,0,0.3); }
+        [data-theme="light"] .btn-primary:hover { box-shadow: 0 8px 24px rgba(0, 153, 255, 0.2); }
+        [data-theme="light"] .btn-secondary:hover { box-shadow: 0 0 12px rgba(0, 153, 255, 0.06); }
+        [data-theme="light"] .lp-action-btn:hover { box-shadow: 0 0 12px rgba(0, 153, 255, 0.06); }
+        [data-theme="light"] .lp-action-btn.delete-action:hover { box-shadow: 0 0 12px rgba(239, 68, 68, 0.08); }
+        [data-theme="light"] .global-panel { box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+        [data-theme="light"] .local-panel { box-shadow: -2px 0 8px rgba(0,0,0,0.04); }
+
+        /* ===== 工具菜单 ===== */
+        .toolbar-menu-wrap { position: relative; }
+        .toolbar-menu-trigger {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border: 1px solid var(--border);
+            background: var(--bg-secondary); border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: 500;
+            font-family: inherit; color: var(--text-primary);
+            transition: all 0.2s;
+        }
+        .toolbar-menu-trigger:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+        .toolbar-menu-trigger.active { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+        .toolbar-menu-trigger svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .toolbar-menu-arrow { transition: transform 0.2s; }
+        .toolbar-menu-trigger.active .toolbar-menu-arrow { transform: rotate(180deg); }
+        .toolbar-dropdown {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0;
+            z-index: 200; min-width: 220px;
+        }
+        .toolbar-dropdown.show { display: block; animation: fadeIn 0.15s ease-out; }
+        .toolbar-dropdown-inner {
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            padding: 8px;
+        }
+        [data-theme="light"] .toolbar-dropdown-inner { box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+        .toolbar-dropdown-group { padding: 4px 0; }
+        .toolbar-dropdown-group-title {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text-secondary);
+            padding: 4px 10px 6px; user-select: none;
+        }
+        .toolbar-dropdown-divider { height: 1px; background: var(--border); margin: 4px 6px; }
+        .toolbar-dropdown-item {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 8px 10px; border: none;
+            background: transparent; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-family: inherit; color: var(--text-primary);
+            transition: all 0.15s; text-align: left;
+        }
+        .toolbar-dropdown-item:hover { background: var(--bg-tertiary); color: var(--brand); }
+        .toolbar-dropdown-item:hover .toolbar-dropdown-icon { color: var(--brand); }
+        .toolbar-dropdown-icon { display: flex; align-items: center; justify-content: center; width: 20px; color: var(--text-secondary); transition: color 0.15s; flex-shrink: 0; }
+        .toolbar-theme-row { cursor: default; justify-content: flex-start; }
+        .toolbar-theme-row:hover { background: var(--bg-tertiary); }
+        .toolbar-theme-row .theme-toggle-btn { margin-left: auto; }
+
+        /* ===== 主题切换按钮 ===== */
+        .theme-toggle-btn {
+            position: relative;
+            width: 44px; height: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            display: flex; align-items: center;
+            padding: 0 3px;
+            transition: all var(--theme-transition);
+            overflow: hidden;
+        }
+        .theme-toggle-btn:hover { border-color: var(--brand); }
+        .theme-toggle-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background var(--theme-transition);
+            position: relative; z-index: 1;
+            flex-shrink: 0;
+        }
+        .theme-toggle-thumb svg { width: 12px; height: 12px; transition: opacity 0.3s, transform 0.4s; }
+        .theme-toggle-thumb .icon-moon { position: absolute; }
+        .theme-toggle-thumb .icon-sun { position: absolute; }
+        /* 深色模式: 月亮在左 */
+        [data-theme="dark"] .theme-toggle-thumb { transform: translateX(0); background: #30363D; }
+        [data-theme="dark"] .theme-toggle-thumb .icon-moon { opacity: 1; transform: rotate(0deg); }
+        [data-theme="dark"] .theme-toggle-thumb .icon-sun { opacity: 0; transform: rotate(-90deg); }
+        /* 浅色模式: 太阳在右 */
+        [data-theme="light"] .theme-toggle-thumb { transform: translateX(20px); background: #FFB800; }
+        [data-theme="light"] .theme-toggle-thumb .icon-moon { opacity: 0; transform: rotate(90deg); }
+        [data-theme="light"] .theme-toggle-thumb .icon-sun { opacity: 1; transform: rotate(0deg); }
+
+        /* ===== 手机界面预览组件 ===== */
+        .cv-phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 8px 0; position: relative; overflow: visible; }
+        .cv-phone-frame {
+            position: relative;
+            width: 100%; max-width: 280px;
+            background: #FFFFFF;
+            border-radius: 28px;
+            outline: 5px solid #D1D1D6;
+            outline-offset: 0px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }
+        .cv-phone-screen {
+            position: relative; width: 100%; height: 330px;
+            overflow: hidden; background: #F5F5F7;
+            cursor: default;
+        }
+        .cv-phone-screen img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+            pointer-events: none; user-select: none;
+        }
+        .cv-phone-placeholder {
+            width: 100%; height: 330px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; cursor: pointer; transition: all 0.2s;
+            color: var(--preview-text-secondary); font-size: 12px; text-align: center;
+            background: #F8F8FA;
+        }
+        .cv-phone-placeholder:hover { background: rgba(0,153,255,0.04); color: #0099FF; }
+        .cv-phone-placeholder .phone-upload-icon { font-size: 28px; opacity: 0.3; }
+
+        /* 高亮区域 */
+        .cv-phone-highlight {
+            position: absolute; z-index: 10; pointer-events: none;
+        }
+        .cv-phone-highlight-border {
+            position: absolute;
+            outline: 2.5px solid #0099FF;
+            outline-offset: -2.5px;
+            border-radius: 12px;
+            pointer-events: none;
+            box-shadow: 0 0 0 3px rgba(0,153,255,0.15), 0 4px 16px rgba(0,153,255,0.12);
+            z-index: 10;
+            transition: all 0.15s ease-out;
+        }
+        .cv-phone-dim-overlay {
+            position: absolute; inset: 0; z-index: 8; pointer-events: none;
+        }
+
+        /* 放大区域 - 浮层形式 */
+        .cv-phone-zoom-area {
+            position: absolute;
+            width: 260px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2.5px solid #0099FF;
+            box-shadow: 0 6px 28px rgba(0,153,255,0.22), 0 2px 8px rgba(0,0,0,0.08);
+            background: #fff;
+            z-index: 20;
+            cursor: move;
+            transition: box-shadow 0.15s;
+        }
+        .cv-phone-zoom-area:hover { box-shadow: 0 8px 36px rgba(0,153,255,0.3), 0 2px 8px rgba(0,0,0,0.1); }
+        .cv-phone-zoom-content {
+            width: 100%; display: block; pointer-events: none; border-radius: 12px;
+        }
+        /* 连接线 */
+        .cv-phone-zoom-line {
+            position: absolute; z-index: 19; pointer-events: none;
+        }
+
+        /* 编辑模式 - 高亮区域选取 */
+        .cv-phone-highlight-selector {
+            position: absolute; inset: 0; z-index: 20; cursor: crosshair;
+        }
+        .cv-phone-selector-rect {
+            position: absolute;
+            border: 2px dashed #0099FF;
+            background: rgba(0,153,255,0.08);
+            border-radius: 6px;
+            pointer-events: none;
+        }
+        .cv-phone-hint {
+            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+            font-size: 10px; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.45);
+            padding: 2px 8px; border-radius: 4px; pointer-events: none; z-index: 25;
+            white-space: nowrap; opacity: 0; transition: opacity 0.2s;
+        }
+        .cv-phone-screen:hover .cv-phone-hint { opacity: 1; }
+
+        /* 全图裁切选择器 */
+        .phone-view-selector-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+            z-index: 300; display: flex; align-items: center; justify-content: center;
+        }
+        .phone-view-selector-dialog {
+            background: var(--bg-secondary); border-radius: 16px; padding: 0;
+            width: 420px; max-height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5); border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .pvs-header {
+            padding: 20px 24px 12px; border-bottom: 1px solid var(--border);
+        }
+        .pvs-header h3 { font-size: 15px; color: var(--text-primary); margin-bottom: 4px; }
+        .pvs-hint { font-size: 11px; color: var(--text-secondary); }
+        .pvs-body {
+            flex: 1; overflow-y: auto; padding: 16px 24px;
+            display: flex; justify-content: center;
+        }
+        .pvs-img-container {
+            position: relative; width: 280px; display: inline-block;
+            border: 1px solid var(--border); border-radius: 8px; overflow: visible;
+        }
+        .pvs-full-img {
+            width: 100%; display: block; user-select: none; pointer-events: none;
+        }
+        .pvs-viewport-box {
+            position: absolute; left: 0;
+            border: 2.5px solid #0099FF;
+            background: rgba(0, 153, 255, 0.08);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
+            cursor: grab; z-index: 10;
+            border-radius: 4px;
+            transition: box-shadow 0.15s;
+        }
+        .pvs-viewport-box:active { cursor: grabbing; }
+        .pvs-footer {
+            padding: 12px 24px 16px; border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+        }
+
+        /* 高亮区域编辑弹窗 */
+        .hle-highlight-box {
+            position: absolute;
+            border: 2.5px solid #0099FF;
+            background: rgba(0, 153, 255, 0.1);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+            cursor: move; z-index: 10;
+            border-radius: 12px;
+        }
+        .hle-resize-handle {
+            position: absolute; width: 12px; height: 12px;
+            background: #fff; border: 2px solid #0099FF; border-radius: 50%;
+            z-index: 11;
+        }
+        .hle-resize-handle.hle-nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .hle-resize-handle.hle-ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .hle-resize-handle.hle-sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .hle-resize-handle.hle-se { bottom: -6px; right: -6px; cursor: se-resize; }
+        /* 拖拽手柄 */
+        .cv-phone-drag-handle {
+            position: absolute; z-index: 15;
+            border: 2px solid #0099FF;
+            border-radius: 12px;
+            cursor: move;
+            background: transparent;
+            transition: box-shadow 0.15s;
+        }
+        .cv-phone-drag-handle:hover { box-shadow: 0 0 0 4px rgba(0,153,255,0.2); }
+        .cv-phone-drag-handle .resize-handle {
+            position: absolute; width: 10px; height: 10px;
+            background: #fff; border: 2px solid #0099FF; border-radius: 50%;
+            z-index: 16;
+        }
+        .cv-phone-drag-handle .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .cv-phone-drag-handle .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .cv-phone-drag-handle .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .cv-phone-drag-handle .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+
+        /* ===== 左侧底部主题切换 ===== */
+        .global-panel-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .global-panel-footer-label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 12px; color: var(--text-secondary); font-weight: 500;
+        }
+        .global-panel-footer-label svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ===== 使用文档入口 ===== */
+        .global-panel-doc-entry {
+            padding: 8px 16px 12px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .doc-entry-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 0; border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px; font-family: inherit;
+            color: var(--text-secondary); font-weight: 500;
+            transition: all 0.2s;
+        }
+        .doc-entry-btn:hover {
+            color: var(--brand);
+        }
+        .doc-entry-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ===== 使用文档弹窗 ===== */
+        .doc-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .doc-modal-overlay.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        [data-theme="light"] .doc-modal-overlay { background: rgba(0,0,0,0.3); }
+        .doc-modal {
+            background: var(--bg-secondary); border-radius: 16px;
+            width: 680px; max-width: 90vw; max-height: 85vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+            border: 1px solid var(--border);
+            animation: slideIn 0.3s ease-out;
+            overflow: hidden;
+        }
+        [data-theme="light"] .doc-modal { box-shadow: 0 24px 64px rgba(0,0,0,0.15), 0 0 0 1px var(--border); }
+        .doc-modal-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .doc-modal-header h3 {
+            font-size: 16px; font-weight: 600; color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .doc-modal-header h3 svg { width: 18px; height: 18px; color: var(--brand); }
+        .doc-modal-close {
+            width: 32px; height: 32px; border: none; background: var(--bg-tertiary);
+            border-radius: 8px; cursor: pointer; font-size: 18px;
+            color: var(--text-secondary); transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .doc-modal-close:hover { background: rgba(239,68,68,0.1); color: #EF4444; }
+        .doc-modal-nav {
+            padding: 12px 24px; border-bottom: 1px solid var(--border);
+            flex-shrink: 0; overflow-x: auto;
+            display: flex; gap: 4px;
+        }
+        .doc-nav-btn {
+            padding: 6px 12px; border: 1px solid transparent;
+            background: transparent; border-radius: 6px; cursor: pointer;
+            font-size: 12px; font-family: inherit; color: var(--text-secondary);
+            font-weight: 500; white-space: nowrap; transition: all 0.15s;
+        }
+        .doc-nav-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .doc-nav-btn.active { color: var(--brand); background: var(--brand-light); border-color: rgba(0,153,255,0.2); }
+        .doc-modal-body {
+            flex: 1; overflow-y: auto; padding: 24px;
+            font-size: 13px; line-height: 1.8; color: var(--text-primary);
+        }
+        .doc-modal-body .doc-section { display: none; }
+        .doc-modal-body .doc-section.active { display: block; }
+        .doc-modal-body h2 { font-size: 18px; font-weight: 700; margin: 0 0 16px; color: var(--text-primary); }
+        .doc-modal-body h3 { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--text-primary); }
+        .doc-modal-body h4 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--text-primary); }
+        .doc-modal-body p { margin: 0 0 10px; }
+        .doc-modal-body ul, .doc-modal-body ol { margin: 0 0 10px; padding-left: 20px; }
+        .doc-modal-body li { margin-bottom: 4px; }
+        .doc-modal-body strong { font-weight: 600; color: var(--text-primary); }
+        .doc-modal-body code {
+            background: var(--bg-tertiary); padding: 1px 5px;
+            border-radius: 4px; font-size: 12px; font-family: 'SF Mono', monospace;
+            border: 1px solid var(--border);
+        }
+        .doc-modal-body pre {
+            background: var(--bg-tertiary); padding: 12px 16px;
+            border-radius: 8px; overflow-x: auto; margin: 8px 0 12px;
+            border: 1px solid var(--border); font-size: 12px; line-height: 1.6;
+        }
+        .doc-modal-body pre code { background: none; border: none; padding: 0; }
+        .doc-modal-body table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 12px; }
+        .doc-modal-body th, .doc-modal-body td {
+            padding: 8px 12px; text-align: left;
+            border: 1px solid var(--border);
+        }
+        .doc-modal-body th { background: var(--bg-tertiary); font-weight: 600; }
+        .doc-modal-body .doc-tip {
+            padding: 10px 14px; border-radius: 8px; margin: 10px 0;
+            background: var(--brand-light); border-left: 3px solid var(--brand);
+            font-size: 12px;
+        }
+        .doc-modal-body .doc-flow {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 10px 14px; background: var(--bg-tertiary); border-radius: 8px;
+            margin: 8px 0 12px; font-size: 12px; font-weight: 500;
+        }
+        .doc-modal-body .doc-flow-arrow { color: var(--brand); font-weight: 700; }
+        .doc-modal-body .doc-checklist { list-style: none; padding-left: 0; }
+        .doc-modal-body .doc-checklist li::before { content: '☐ '; color: var(--text-secondary); }
+
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>QQ宝藏 EasyDesign</h1>
+        <div class="header-center">
+            <div class="mode-switcher" id="modeSwitcher">
+                <button class="mode-btn active" data-mode="gzh" id="modeGzh">公众号长图</button>
+                <button class="mode-btn xhs-mode" data-mode="xhs" id="modeXhs">小红书多图</button>
+            </div>
+            <div class="scale-control">
+                <span>缩放</span>
+                <input type="range" id="scaleRange" min="50" max="150" value="100">
+                <span id="scaleValue">100%</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div class="toolbar-menu-wrap" id="toolbarMenuWrap">
+                <button class="toolbar-menu-trigger" id="toolbarMenuTrigger">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    <span>模版管理</span>
+                    <svg class="toolbar-menu-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="toolbar-dropdown" id="toolbarDropdown">
+                    <div class="toolbar-dropdown-inner">
+                        <div class="toolbar-dropdown-group">
+                            <button class="toolbar-dropdown-item" id="templateBtn">
+                                <span class="toolbar-dropdown-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
+                                <span>加载模板</span>
+                            </button>
+                            <button class="toolbar-dropdown-item" id="saveTemplateBtn">
+                                <span class="toolbar-dropdown-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
+                                <span>保存模板</span>
+                            </button>
+                        </div>
+                        <div class="toolbar-dropdown-divider"></div>
+                        <div class="toolbar-dropdown-group">
+                            <button class="toolbar-dropdown-item" id="importTemplateBtn">
+                                <span class="toolbar-dropdown-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                                <span>导入模板文件</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="export-group" id="gzhExportGroup">
+                <button class="export-unified-trigger" id="openExportPanel" title="导出设置">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出图片
+                </button>
+            </div>
+            <div class="export-group hidden" id="xhsExportGroup">
+                <button class="btn-primary xhs-style" id="xhsExportBtn">导出小红书多图</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-area" id="canvasArea">
+        <div class="global-panel" id="globalPanel">
+            <div class="global-panel-section global-panel-bg">
+                <div class="global-panel-bg-header"><h3>画布背景色</h3></div>
+                <div class="bg-color-grid" id="bgColorGrid"></div>
+            </div>
+            <div class="global-panel-section global-panel-manage">
+                <div class="global-panel-header"><h3>段落管理</h3><span class="panel-badge" id="sectionCount">0 个段落</span></div>
+                <div class="global-panel-list" id="globalPanelList"></div>
+            </div>
+            <div class="global-panel-footer">
+                <span class="global-panel-footer-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    主题模式
+                </span>
+                <button class="theme-toggle-btn" id="themeToggleBtn" title="切换日/夜间模式">
+                    <div class="theme-toggle-thumb">
+                        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor" stroke="none"/></svg>
+                        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    </div>
+                </button>
+            </div>
+            <div class="global-panel-doc-entry">
+                <button class="doc-entry-btn" id="docEntryBtn" title="查看使用文档">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="17" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+                    使用文档
+                </button>
+            </div>
+        </div>
+        <div class="canvas-scroll" id="gzhCanvasScroll">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <div class="canvas" id="canvas">
+                    <div class="canvas-inner" id="canvasInner"></div>
+                    <div class="canvas-add-bottom" id="addBottomWrap">
+                        <button class="add-bottom-btn" id="addBottomBtn">+ 添加新段落</button>
+                        <div class="add-menu" id="bottomAddMenu">
+                            <div class="add-menu-item" data-type="subtitle"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">标题文字</text><line x1="4" y1="20" x2="16" y2="20" stroke="#0099FF" stroke-width="1.5"/><path d="M22 17L24 22L26 17" stroke="#0099FF" stroke-width="1.2" fill="none"/><line x1="32" y1="20" x2="44" y2="20" stroke="#0099FF" stroke-width="1.5"/></svg></div><span class="add-menu-label">模块标题</span></div>
+                            <div class="add-menu-item" data-type="h1"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">大字正文</text></svg></div><span class="add-menu-label">正文大字</span></div>
+                            <div class="add-menu-item" data-type="body"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="6" width="32" height="2" rx="1" fill="#999"/><rect x="10" y="12" width="28" height="2" rx="1" fill="#bbb"/><rect x="12" y="18" width="24" height="2" rx="1" fill="#ccc"/></svg></div><span class="add-menu-label">正文标准</span></div>
+                            <div class="add-menu-item" data-type="note"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="10" y="8" width="28" height="1.5" rx="0.75" fill="#bbb"/><rect x="14" y="14" width="20" height="1.5" rx="0.75" fill="#ccc"/><rect x="12" y="20" width="24" height="1.5" rx="0.75" fill="#ddd"/></svg></div><span class="add-menu-label">注释</span></div>
+                            <div class="add-menu-item" data-type="image"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="4" width="32" height="20" rx="3" stroke="#ccc" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/><circle cx="18" cy="12" r="3" fill="#ddd"/><path d="M12 22L20 14L28 20L34 16L38 22" stroke="#ccc" stroke-width="1.2" fill="none"/></svg></div><span class="add-menu-label">媒体模块</span></div>
+                            <div class="add-menu-item" data-type="search"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="6" y="6" width="36" height="12" rx="6" fill="#0099FF"/><rect x="16" y="8" width="24" height="8" rx="4" fill="#fff"/><circle cx="36" cy="12" r="2.5" stroke="#999" stroke-width="1" fill="none"/><line x1="37.5" y1="14" x2="39" y2="15.5" stroke="#999" stroke-width="1"/><text x="24" y="26" text-anchor="middle" font-size="5" fill="#999">slogan</text></svg></div><span class="add-menu-label">搜索引导</span></div>
+                            <div class="add-menu-item" data-type="phone"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="14" y="2" width="20" height="24" rx="4" stroke="#999" stroke-width="1.5" fill="none"/><rect x="20" y="3" width="8" height="2" rx="1" fill="#ccc"/><rect x="16" y="6" width="16" height="16" fill="#f0f0f0"/><rect x="17" y="14" width="14" height="6" rx="1" stroke="#0099FF" stroke-width="1" fill="rgba(0,153,255,0.08)"/></svg></div><span class="add-menu-label">手机预览</span></div>
+                            <div class="add-menu-item" data-type="sticker"><div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><circle cx="24" cy="14" r="11" fill="#FFE066" stroke="#FFB800" stroke-width="1.2"/><circle cx="20" cy="11" r="1.5" fill="#333"/><circle cx="28" cy="11" r="1.5" fill="#333"/><path d="M19 17c1.5 2.5 8.5 2.5 10 0" stroke="#333" stroke-width="1.2" stroke-linecap="round" fill="none"/></svg></div><span class="add-menu-label">表情包</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="xhs-canvas-scroll hidden" id="xhsCanvasScroll">
+            <div id="xhsPageContainer"></div>
+            <button class="xhs-add-page-btn" id="xhsAddPageBtn">+ 添加新页面</button>
+        </div>
+        <div class="local-panel" id="localPanel">
+            <div class="local-panel-empty" id="localPanelEmpty"><div class="empty-icon">◇</div><div>点击画布中的元素<br>查看操作选项</div></div>
+            <div id="localPanelContent" style="display:none;flex-direction:column;height:100%;"></div>
+        </div>
+        <div class="xhs-edit-panel hidden" id="xhsEditPanel">
+            <div class="xhs-edit-panel-header"><h3>小红书编辑 <span style="font-size:10px;padding:1px 6px;border-radius:10px;background:var(--xhs-pink-light);color:var(--xhs-pink);font-weight:500;">1242×1660</span></h3></div>
+            <div class="xhs-edit-panel-content" id="xhsEditPanelContent"></div>
+        </div>
+    </div>
+
+
+    <div class="template-modal-overlay" id="templateModal"><div class="template-modal"><h3>模板列表</h3><div class="template-modal-list" id="templateList"></div><div class="template-modal-footer"><button class="btn-secondary" id="closeTemplateModal">关闭</button></div></div></div>
+    <!-- 统一导出面板 -->
+    <div class="export-panel-overlay" id="exportPanelOverlay">
+        <div class="export-panel">
+            <div class="export-panel-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出设置
+                </h3>
+                <button class="export-panel-close" id="exportPanelClose">✕</button>
+            </div>
+            <div class="export-panel-body">
+                <div class="export-panel-section">
+                    <div class="export-panel-section-title">输出倍率</div>
+                    <div class="export-panel-options" id="exportScaleOptions">
+                        <button class="export-panel-opt" data-scale="2">750 @2x</button>
+                        <button class="export-panel-opt active" data-scale="3">1125 @3x</button>
+                    </div>
+                </div>
+                <div class="export-panel-divider"></div>
+                <div class="export-panel-section">
+                    <div class="export-panel-section-title">导出方式</div>
+                    <div class="export-panel-options" id="exportModeOptions">
+                        <button class="export-panel-opt active" data-mode="full">完整长图</button>
+                        <button class="export-panel-opt" data-mode="segment">分段切图</button>
+                    </div>
+                </div>
+                <div class="export-panel-section" id="exportSegmentConfig" style="display:none;">
+                    <div class="export-panel-section-title">分段数量</div>
+                    <div class="export-segment-row">
+                        <button class="export-panel-opt active" data-parts="2">2 段</button>
+                        <button class="export-panel-opt" data-parts="3">3 段</button>
+                        <button class="export-panel-opt" data-parts="4">4 段</button>
+                        <button class="export-panel-opt" data-parts="5">5 段</button>
+                        <div class="export-segment-custom">
+                            <span>自定义</span>
+                            <input type="number" id="exportCustomParts" min="2" max="20" placeholder="2-20">
+                            <span>段</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="export-panel-actions">
+                    <button class="btn-primary" id="exportExecuteBtn">开始导出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="export-overlay" id="exportOverlay"><div class="spinner"></div><div class="export-text" id="exportText">正在生成...</div><div class="export-progress" id="exportProgress"></div></div>
+    <div class="paste-toast" id="pasteToast">媒体已粘贴</div>
+
+    <!-- 使用文档弹窗 -->
+    <div class="doc-modal-overlay" id="docModalOverlay">
+        <div class="doc-modal">
+            <div class="doc-modal-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    使用文档
+                </h3>
+                <button class="doc-modal-close" id="docModalClose">✕</button>
+            </div>
+            <div class="doc-modal-nav" id="docNav">
+                <button class="doc-nav-btn active" data-sec="sec-intro">产品介绍</button>
+                <button class="doc-nav-btn" data-sec="sec-start">快速入门</button>
+                <button class="doc-nav-btn" data-sec="sec-layout">界面布局</button>
+                <button class="doc-nav-btn" data-sec="sec-edit">内容编辑</button>
+                <button class="doc-nav-btn" data-sec="sec-template">模板管理</button>
+                <button class="doc-nav-btn" data-sec="sec-export">导出功能</button>
+                <button class="doc-nav-btn" data-sec="sec-tips">高级技巧</button>
+                <button class="doc-nav-btn" data-sec="sec-faq">常见问题</button>
+            </div>
+            <div class="doc-modal-body" id="docModalBody">
+
+                <!-- 产品介绍 -->
+                <div class="doc-section active" id="sec-intro">
+                    <h2>产品介绍</h2>
+                    <h3>平台概述</h3>
+                    <p>QQ宝藏 EasyDesign 是一个专业的在线图片设计平台，专为宣发内容制作而设计。平台支持两种主要设计模式：</p>
+                    <ul>
+                        <li><strong>公众号长图模式</strong>：适用于微信公众号文章配图、朋友圈分享等场景</li>
+                        <li><strong>小红书多图模式</strong>：专为小红书笔记发布优化的多页设计</li>
+                    </ul>
+                    <h3>核心特性</h3>
+                    <ul>
+                        <li><strong>双模式设计</strong> — 一个平台，两种专业模式</li>
+                        <li><strong>丰富的内容类型</strong> — 文字、图片、视频、动画、表情包等</li>
+                        <li><strong>完整的模板系统</strong> — 保存、加载、导入导出模板</li>
+                        <li><strong>精准的导出控制</strong> — 多分辨率、分段切图、批量下载</li>
+                        <li><strong>现代化界面</strong> — 支持日夜间主题切换</li>
+                        <li><strong>数据持久化</strong> — 本地存储，数据不丢失</li>
+                    </ul>
+                    <h3>适用场景</h3>
+                    <table>
+                        <thead><tr><th>使用场景</th><th>推荐模式</th><th>输出规格</th></tr></thead>
+                        <tbody>
+                            <tr><td>微信公众号文章配图</td><td>公众号长图</td><td>375px宽长图</td></tr>
+                            <tr><td>朋友圈营销海报</td><td>公众号长图</td><td>1125px高清图</td></tr>
+                            <tr><td>小红书笔记发布</td><td>小红书多图</td><td>1242×1660px多页</td></tr>
+                            <tr><td>产品宣传长图</td><td>公众号长图</td><td>支持分段切图</td></tr>
+                            <tr><td>活动推广素材</td><td>两种模式均可</td><td>根据平台需求选择</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 快速入门 -->
+                <div class="doc-section" id="sec-start">
+                    <h2>快速入门</h2>
+                    <h3>第一次使用</h3>
+                    <ol>
+                        <li><strong>打开平台</strong>：在浏览器中打开 <code>QQEasyDesign_v2.html</code></li>
+                        <li><strong>选择模式</strong>：点击顶部的"公众号长图"或"小红书多图"按钮</li>
+                        <li><strong>开始设计</strong>：点击画布中的"+ 添加新段落"开始创作</li>
+                    </ol>
+                    <h3>基础操作流程</h3>
+                    <div class="doc-flow">
+                        <span>选择设计模式</span><span class="doc-flow-arrow">→</span>
+                        <span>添加内容段落</span><span class="doc-flow-arrow">→</span>
+                        <span>编辑文字和媒体</span><span class="doc-flow-arrow">→</span>
+                        <span>调整样式</span><span class="doc-flow-arrow">→</span>
+                        <span>预览效果</span><span class="doc-flow-arrow">→</span>
+                        <span>导出图片</span>
+                    </div>
+                    <h3>5分钟快速上手</h3>
+                    <h4>步骤1：创建第一个段落</h4>
+                    <ul>
+                        <li>点击画布底部的"+ 添加新段落"按钮</li>
+                        <li>选择"模块标题"类型</li>
+                        <li>输入标题文字，如"产品介绍"</li>
+                    </ul>
+                    <h4>步骤2：添加正文内容</h4>
+                    <ul>
+                        <li>再次点击"+ 添加新段落"</li>
+                        <li>选择"正文标准"类型</li>
+                        <li>输入产品描述文字</li>
+                    </ul>
+                    <h4>步骤3：插入图片</h4>
+                    <ul>
+                        <li>点击"+ 添加新段落"</li>
+                        <li>选择"媒体模块"类型</li>
+                        <li>拖拽图片文件到上传区域或点击上传</li>
+                    </ul>
+                    <h4>步骤4：导出图片</h4>
+                    <ul>
+                        <li>点击右上角"导出长图"按钮</li>
+                        <li>选择分辨率（推荐1125 @3x）</li>
+                        <li>点击"导出全图"完成</li>
+                    </ul>
+                </div>
+
+                <!-- 界面布局 -->
+                <div class="doc-section" id="sec-layout">
+                    <h2>界面布局详解</h2>
+                    <h3>整体布局</h3>
+                    <p>平台采用经典的三栏式布局：</p>
+                    <pre><code>┌─────────────────────────────────────────────────┐
+│                   顶部工具栏                      │
+├─────────┬───────────────────┬───────────────────┤
+│  左侧   │                   │                   │
+│ 全局面板 │    中央画布区域     │   右侧属性面板     │
+│         │                   │                   │
+└─────────┴───────────────────┴───────────────────┘</code></pre>
+                    <h3>顶部工具栏</h3>
+                    <h4>模式切换器</h4>
+                    <ul>
+                        <li><code>公众号长图</code>：切换到长图编辑模式</li>
+                        <li><code>小红书多图</code>：切换到多图编辑模式</li>
+                    </ul>
+                    <h4>缩放控制</h4>
+                    <ul>
+                        <li>滑块范围：50% - 150%</li>
+                        <li>实时显示当前缩放比例</li>
+                    </ul>
+                    <h4>模板管理下拉菜单</h4>
+                    <ul>
+                        <li><strong>加载模板</strong>：打开模板选择弹窗</li>
+                        <li><strong>保存模板</strong>：将当前设计保存为模板</li>
+                        <li><strong>导入模板文件</strong>：从本地导入 <code>.json</code> 或 <code>.edtpl.json</code> 格式的模板文件</li>
+                    </ul>
+                    <h4>导出控制组</h4>
+                    <ul>
+                        <li><strong>分辨率选择</strong>：<code>750 @2x</code>（一般）和 <code>1125 @3x</code>（高清推荐）</li>
+                        <li><strong>导出选项</strong>：悬停显示分段切图（2-5段）和完整长图导出</li>
+                    </ul>
+
+                    <h3>左侧全局面板</h3>
+                    <h4>画布背景色区域</h4>
+                    <ul>
+                        <li><strong>纯色预设</strong>：9种精选颜色</li>
+                        <li><strong>渐变预设</strong>：6种渐变效果</li>
+                        <li><strong>自定义颜色</strong>：点击色块打开颜色选择器</li>
+                    </ul>
+                    <h4>段落管理区域</h4>
+                    <ul>
+                        <li>显示当前段落总数</li>
+                        <li>颜色标识：5种颜色标记不同类型</li>
+                        <li>操作按钮：上移、下移、隐藏/显示、删除</li>
+                    </ul>
+                    <h4>底部设置</h4>
+                    <ul>
+                        <li>主题切换：日间/夜间模式切换</li>
+                        <li>使用文档：查看功能说明</li>
+                    </ul>
+
+                    <h3>右侧属性面板</h3>
+                    <ul>
+                        <li><strong>空状态</strong>：显示"点击画布中的元素查看操作选项"</li>
+                        <li><strong>元素选中</strong>：显示对应元素的属性和编辑选项</li>
+                        <li><strong>小红书模式</strong>：显示页面管理和段落分配功能</li>
+                    </ul>
+                </div>
+
+                <!-- 内容编辑 -->
+                <div class="doc-section" id="sec-edit">
+                    <h2>内容编辑功能</h2>
+                    <h3>文字编辑</h3>
+                    <h4>文字类型</h4>
+                    <table>
+                        <thead><tr><th>类型</th><th>样式特点</th><th>字号</th><th>适用场景</th></tr></thead>
+                        <tbody>
+                            <tr><td>模块标题</td><td>带装饰线的标题样式</td><td>18px</td><td>章节标题、模块分隔</td></tr>
+                            <tr><td>正文大字</td><td>粗体大号文字</td><td>20px</td><td>重点内容、小标题</td></tr>
+                            <tr><td>正文标准</td><td>标准正文样式</td><td>16px</td><td>主要内容、详细描述</td></tr>
+                            <tr><td>注释</td><td>小号辅助文字</td><td>14px</td><td>备注信息、补充说明</td></tr>
+                        </tbody>
+                    </table>
+                    <h4>文字格式化</h4>
+                    <ul>
+                        <li><strong>加粗</strong>：点击工具栏中的 <code>B</code> 按钮</li>
+                        <li><strong>颜色设置</strong>：QQ品牌蓝(#0099FF)、警示红色、默认黑色</li>
+                        <li><strong>高亮文字</strong>：使用 <code>[需要高亮的文字]</code> 语法，自动转换为黄色背景高亮</li>
+                    </ul>
+                    <h4>实时编辑</h4>
+                    <ul>
+                        <li>点击文字即可直接修改</li>
+                        <li>按 Enter 键换行</li>
+                        <li>支持混合格式富文本</li>
+                    </ul>
+
+                    <h3>图片编辑</h3>
+                    <h4>支持的媒体格式</h4>
+                    <ul>
+                        <li><strong>图片</strong>：JPEG、PNG、SVG、GIF、WebP</li>
+                        <li><strong>视频</strong>：MP4、WebM</li>
+                        <li><strong>动画</strong>：Lottie JSON 文件</li>
+                    </ul>
+                    <h4>上传方式</h4>
+                    <ol>
+                        <li><strong>拖拽上传</strong>：直接拖拽文件到上传区域</li>
+                        <li><strong>点击上传</strong>：点击上传区域选择文件</li>
+                        <li><strong>粘贴上传</strong>：Ctrl/Cmd+V 粘贴剪贴板图片</li>
+                    </ol>
+                    <h4>图片调整</h4>
+                    <ul>
+                        <li>使用滑块调整宽度（10%-100%）</li>
+                        <li>自动保持宽高比例</li>
+                        <li>显示媒体类型标签和文件信息</li>
+                    </ul>
+
+                    <h3>特殊组件</h3>
+                    <h4>搜索引导组件</h4>
+                    <ul>
+                        <li>模拟QQ搜索框样式，引导用户搜索特定内容</li>
+                        <li>可编辑搜索词、标语文字和主题色</li>
+                    </ul>
+                    <h4>手机预览组件</h4>
+                    <ul>
+                        <li>展示手机界面截图，支持高亮区域标注</li>
+                        <li>操作：上传截图 → 选择高亮区域 → 调整框的位置和大小</li>
+                        <li>支持拖拽移动、尺寸调节、多区域标注</li>
+                    </ul>
+                    <h4>表情包组件</h4>
+                    <ul>
+                        <li>内置丰富的表情包资源，4×4网格布局</li>
+                        <li>一键选择应用，支持大小调整</li>
+                    </ul>
+
+                    <h3>样式控制</h3>
+                    <ul>
+                        <li><strong>元素可见性</strong>：控制元素在导出中的显示/隐藏状态</li>
+                        <li><strong>段落排序</strong>：支持上移下移和拖拽排序</li>
+                        <li><strong>颜色标识</strong>：5种颜色标记不同段落类型</li>
+                    </ul>
+                </div>
+
+                <!-- 模板管理 -->
+                <div class="doc-section" id="sec-template">
+                    <h2>模板管理系统</h2>
+                    <h3>模板保存</h3>
+                    <h4>保存为普通模板</h4>
+                    <ol>
+                        <li>完成设计内容</li>
+                        <li>点击顶部"模版管理"下拉菜单</li>
+                        <li>选择"保存模板"</li>
+                        <li>输入模板名称并确认</li>
+                    </ol>
+                    <div class="doc-tip">普通模板保存设计结构和样式，不包含媒体文件，存储在浏览器本地，加载速度快。</div>
+
+                    <h4>保存为预制模板</h4>
+                    <ul>
+                        <li>在段落管理面板中点击"固定为预制"按钮</li>
+                        <li>包含完整媒体数据，存储在IndexedDB中</li>
+                    </ul>
+
+                    <h3>模板加载</h3>
+                    <h4>模板分类</h4>
+                    <ul>
+                        <li><strong>内置模板</strong>：系统预设的专业模板</li>
+                        <li><strong>用户模板</strong>：用户自己保存的模板，支持重命名和删除</li>
+                        <li><strong>预制模板</strong>：包含媒体数据的完整模板</li>
+                    </ul>
+                    <h4>加载操作</h4>
+                    <ol>
+                        <li>点击"加载模板"按钮</li>
+                        <li>在弹窗中浏览并选择模板</li>
+                        <li>点击模板卡片加载</li>
+                        <li>确认替换当前设计</li>
+                    </ol>
+
+                    <h3>模板导入导出</h3>
+                    <h4>导出模板</h4>
+                    <ul>
+                        <li>在模板列表中点击"导出"按钮</li>
+                        <li>导出为 <code>.edtpl.json</code> 格式，包含完整设计数据和媒体文件</li>
+                        <li>适用于模板备份、团队分享、跨设备同步</li>
+                    </ul>
+                    <h4>导入模板</h4>
+                    <ol>
+                        <li>点击"导入模板文件"按钮</li>
+                        <li>选择 <code>.json</code> 或 <code>.edtpl.json</code> 格式文件</li>
+                        <li>系统自动解析验证并添加到模板库</li>
+                    </ol>
+
+                    <h3>管理技巧</h3>
+                    <ul>
+                        <li><strong>命名规范</strong>：按用途/风格/尺寸分类，如 <code>产品介绍_v1</code>、<code>简约风格_蓝色</code></li>
+                        <li><strong>版本控制</strong>：在名称中标注版本号，保留关键版本</li>
+                        <li><strong>团队协作</strong>：设计师创建模板 → 导出文件 → 分享给团队 → 导入使用</li>
+                    </ul>
+                </div>
+
+                <!-- 导出功能 -->
+                <div class="doc-section" id="sec-export">
+                    <h2>导出功能详解</h2>
+                    <h3>公众号长图导出</h3>
+                    <h4>分辨率选择</h4>
+                    <table>
+                        <thead><tr><th>选项</th><th>输出宽度</th><th>适用场景</th><th>特点</th></tr></thead>
+                        <tbody>
+                            <tr><td>750 @2x</td><td>750px</td><td>一般质量要求</td><td>文件较小，加载快</td></tr>
+                            <tr><td>1125 @3x（推荐）</td><td>1125px</td><td>高清显示需求</td><td>更清晰，文件较大</td></tr>
+                        </tbody>
+                    </table>
+                    <h4>导出方式</h4>
+                    <ul>
+                        <li><strong>完整长图</strong>：点击"导出全图"，生成完整PNG图片</li>
+                        <li><strong>分段切图</strong>：切2/3/4/5段，适合社交媒体分步展示</li>
+                    </ul>
+                    <h4>批量下载</h4>
+                    <ul>
+                        <li>分段导出自动生成ZIP文件</li>
+                        <li>文件命名规则：<code>设计标题_第X段.png</code></li>
+                    </ul>
+
+                    <h3>小红书多图导出</h3>
+                    <ul>
+                        <li>固定尺寸：1242×1660px（3:4比例）</li>
+                        <li>逐页生成PNG图片，自动依次下载</li>
+                        <li>文件命名：<code>设计标题_第X页.png</code></li>
+                    </ul>
+
+                    <h3>导出最佳实践</h3>
+                    <h4>导出前检查清单</h4>
+                    <ul class="doc-checklist">
+                        <li>所有文字内容已确认无误</li>
+                        <li>图片清晰度满足要求</li>
+                        <li>背景色和整体风格统一</li>
+                        <li>隐藏不需要的辅助元素</li>
+                        <li>选择合适的分辨率</li>
+                    </ul>
+                    <h4>不同场景推荐</h4>
+                    <table>
+                        <thead><tr><th>场景</th><th>推荐设置</th></tr></thead>
+                        <tbody>
+                            <tr><td>微信公众号</td><td>1125px @3x 完整长图</td></tr>
+                            <tr><td>朋友圈分享</td><td>750px @2x 分段切图</td></tr>
+                            <tr><td>小红书发布</td><td>标准多图导出</td></tr>
+                            <tr><td>微博长图</td><td>1125px @3x 完整长图</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 高级技巧 -->
+                <div class="doc-section" id="sec-tips">
+                    <h2>高级使用技巧</h2>
+                    <h3>设计效率提升</h3>
+                    <h4>快捷操作</h4>
+                    <table>
+                        <thead><tr><th>操作</th><th>快捷键/方式</th></tr></thead>
+                        <tbody>
+                            <tr><td>撤销</td><td><code>Ctrl/Cmd + Z</code></td></tr>
+                            <tr><td>重做</td><td><code>Ctrl/Cmd + Y</code></td></tr>
+                            <tr><td>删除元素</td><td><code>Delete</code></td></tr>
+                            <tr><td>复制</td><td><code>Ctrl/Cmd + C</code></td></tr>
+                            <tr><td>粘贴</td><td><code>Ctrl/Cmd + V</code></td></tr>
+                            <tr><td>快速编辑</td><td>双击文字</td></tr>
+                            <tr><td>拖拽排序</td><td>拖拽段落左侧手柄</td></tr>
+                        </tbody>
+                    </table>
+                    <h4>模板复用策略</h4>
+                    <ul>
+                        <li>设计常用页面结构保存为基础模板，每次加载后修改内容</li>
+                        <li>将常用设计元素保存为独立模块，通过组合快速构建</li>
+                    </ul>
+
+                    <h3>设计质量优化</h3>
+                    <h4>视觉层次设计</h4>
+                    <ul>
+                        <li><strong>主标题</strong>：使用"模块标题"，配合装饰线</li>
+                        <li><strong>副标题</strong>：使用"正文大字"，突出重点</li>
+                        <li><strong>正文</strong>：使用"正文标准"，保持可读性</li>
+                        <li><strong>辅助信息</strong>：使用"注释"，降低视觉权重</li>
+                    </ul>
+                    <h4>颜色层次</h4>
+                    <ul>
+                        <li>主色调：QQ品牌蓝突出重点</li>
+                        <li>辅助色：灰色系作为辅助信息</li>
+                        <li>警示色：红色标注重要提醒</li>
+                    </ul>
+
+                    <h3>跨平台适配</h3>
+                    <table>
+                        <thead><tr><th>平台</th><th>注意事项</th></tr></thead>
+                        <tbody>
+                            <tr><td>微信公众号</td><td>宽度不超过900px，避免过长，简洁明了</td></tr>
+                            <tr><td>小红书</td><td>3:4比例，图文并茂，色彩丰富</td></tr>
+                            <tr><td>微博</td><td>建议690px宽，信息密度适中</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>性能优化</h3>
+                    <ul>
+                        <li>分段设计复杂内容，及时删除不需要的段落</li>
+                        <li>压缩图片文件大小，选择合适格式</li>
+                        <li>导出前隐藏不需要的元素，选择合适分辨率</li>
+                        <li>避免同时导出多个设计，监控浏览器内存</li>
+                    </ul>
+                </div>
+
+                <!-- 常见问题 -->
+                <div class="doc-section" id="sec-faq">
+                    <h2>常见问题解答</h2>
+
+                    <h3>使用问题</h3>
+                    <h4>Q1: 图片上传失败？</h4>
+                    <ul>
+                        <li>确保使用 JPEG、PNG、GIF、SVG 或 WebP 格式</li>
+                        <li>单个文件建议不超过10MB</li>
+                        <li>推荐使用 Chrome、Firefox 或 Safari 浏览器</li>
+                    </ul>
+                    <h4>Q2: 导出图片不清晰？</h4>
+                    <ul>
+                        <li>选择 1125px @3x 高分辨率</li>
+                        <li>确保上传的原图本身清晰</li>
+                        <li>避免过度缩放小图片</li>
+                    </ul>
+                    <h4>Q3: 模板保存后找不到？</h4>
+                    <ul>
+                        <li>确认看到"保存成功"提示</li>
+                        <li>检查"用户模板"或"预制模板"分类</li>
+                        <li>确保浏览器允许本地存储</li>
+                    </ul>
+                    <h4>Q4: 小红书多图段落显示不全？</h4>
+                    <ul>
+                        <li>确保段落已正确分配到页面</li>
+                        <li>单页内容不要过多，合理使用分页</li>
+                        <li>检查元素可见性设置</li>
+                    </ul>
+
+                    <h3>技术问题</h3>
+                    <h4>Q5: 浏览器提示内存不足？</h4>
+                    <ul>
+                        <li>减少段落数量，压缩大图片</li>
+                        <li>关闭其他标签页，重启浏览器</li>
+                    </ul>
+                    <h4>Q6: 导出卡住不动？</h4>
+                    <ul>
+                        <li>复杂设计需要更多处理时间，请耐心等待</li>
+                        <li>尝试分段导出或刷新后重试</li>
+                    </ul>
+                    <h4>Q7: 模板导入失败？</h4>
+                    <ul>
+                        <li>确保文件为 <code>.json</code> 或 <code>.edtpl.json</code> 格式</li>
+                        <li>确保文件完整、JSON格式正确</li>
+                    </ul>
+
+                    <h3>数据安全</h3>
+                    <h4>Q8: 设计数据会丢失吗？</h4>
+                    <ul>
+                        <li>数据存储在本地浏览器中，不会上传到服务器</li>
+                        <li>清除浏览器数据会删除设计，建议定期导出模板备份</li>
+                        <li>将 <code>.edtpl.json</code> 文件保存到云盘作为备份</li>
+                    </ul>
+
+                    <h3>兼容性</h3>
+                    <h4>Q9: 推荐浏览器？</h4>
+                    <ul>
+                        <li><strong>推荐</strong>：Chrome 80+、Firefox 75+、Safari 13+</li>
+                        <li><strong>避免</strong>：IE浏览器、过旧版本浏览器</li>
+                        <li>建议在桌面端进行设计，移动端可预览效果</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="text-format-toolbar" id="textFormatToolbar">
+        <button class="fmt-btn fmt-btn-bold" id="fmtBold" title="加粗">B</button><div class="fmt-divider"></div>
+        <span class="fmt-color-label">颜色</span>
+        <div class="fmt-color-dot" data-color="#0099FF" style="background:#0099FF;" title="QQ品牌蓝"></div>
+        <div class="fmt-color-dot" data-color="#F74C30" style="background:#F74C30;" title="QQ警示红"></div>
+        <div class="fmt-color-dot" data-color="inherit" style="background:var(--text-primary);" title="默认黑色"></div>
+    </div>
+    <div id="xhsExportContainer" style="position:fixed;left:-9999px;top:0;z-index:-1;"></div>
+
+    <script src="v2_main.js"></script>
+    <script src="v2_xhs.js"></script>
+    <script>
+    // ===== 工具菜单交互 =====
+    (function() {
+        const trigger = document.getElementById('toolbarMenuTrigger');
+        const dropdown = document.getElementById('toolbarDropdown');
+
+        function toggleMenu() {
+            const isOpen = dropdown.classList.contains('show');
+            if (isOpen) {
+                closeMenu();
+            } else {
+                dropdown.classList.add('show');
+                trigger.classList.add('active');
+            }
+        }
+
+        function closeMenu() {
+            dropdown.classList.remove('show');
+            trigger.classList.remove('active');
+        }
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        // 点击菜单外部关闭
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                closeMenu();
+            }
+        });
+
+        // 点击模板按钮后关闭菜单
+        document.getElementById('templateBtn').addEventListener('click', () => {
+            closeMenu();
+        });
+        document.getElementById('saveTemplateBtn').addEventListener('click', () => {
+            closeMenu();
+        });
+        document.getElementById('importTemplateBtn').addEventListener('click', () => {
+            closeMenu();
+            if (window.APP && window.APP.importTemplateFromFile) {
+                window.APP.importTemplateFromFile();
+            }
+        });
+
+        // ESC关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMenu();
+        });
+    })();
+
+    // ===== 主题管理器 =====
+    (function() {
+        const STORAGE_KEY = 'easydesign_theme';
+        const html = document.documentElement;
+        const btn = document.getElementById('themeToggleBtn');
+
+        function getStoredTheme() {
+            return localStorage.getItem(STORAGE_KEY) || 'light';
+        }
+
+        function applyTheme(theme) {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem(STORAGE_KEY, theme);
+        }
+
+        function toggleTheme() {
+            const current = html.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        }
+
+        // 初始化：从localStorage恢复主题（在DOM加载后立即执行）
+        applyTheme(getStoredTheme());
+
+        // 绑定按钮事件
+        btn.addEventListener('click', toggleTheme);
+    })();
+
+    // ===== 使用文档弹窗 =====
+    (function() {
+        const overlay = document.getElementById('docModalOverlay');
+        const openBtn = document.getElementById('docEntryBtn');
+        const closeBtn = document.getElementById('docModalClose');
+        const nav = document.getElementById('docNav');
+        const body = document.getElementById('docModalBody');
+
+        function openDoc() {
+            overlay.classList.add('show');
+        }
+        function closeDoc() {
+            overlay.classList.remove('show');
+        }
+
+        openBtn.addEventListener('click', openDoc);
+        closeBtn.addEventListener('click', closeDoc);
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closeDoc();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && overlay.classList.contains('show')) closeDoc();
+        });
+
+        nav.addEventListener('click', function(e) {
+            var btn = e.target.closest('.doc-nav-btn');
+            if (!btn) return;
+            var secId = btn.getAttribute('data-sec');
+            nav.querySelectorAll('.doc-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            body.querySelectorAll('.doc-section').forEach(function(s) { s.classList.remove('active'); });
+            var target = document.getElementById(secId);
+            if (target) target.classList.add('active');
+            body.scrollTop = 0;
+        });
+    })();
+    </script>
+
+</body>
+</html>

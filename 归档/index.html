@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公众号宣发长图配置工具</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --brand: #0099FF;
+            --brand-light: rgba(0, 153, 255, 0.12);
+            --bg: #F0F5FF;
+            --text-primary: rgba(0, 0, 0, 0.90);
+            --text-secondary: rgba(60, 60, 67, 0.56);
+            --white: #FFFFFF;
+            --border: #E5E5E7;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #E8EAF0;
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ===== 顶部工具栏 ===== */
+        .app-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .app-header h1 {
+            font-size: 16px; font-weight: 600;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .app-header h1::before {
+            content: ''; width: 4px; height: 16px;
+            background: var(--brand); border-radius: 2px;
+        }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .export-group { display: flex; align-items: center; gap: 0; }
+        .res-toggle {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: 8px 0 0 8px;
+            overflow: hidden;
+            background: var(--white);
+        }
+        .res-toggle-btn {
+            padding: 8px 10px;
+            border: none;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .res-toggle-btn + .res-toggle-btn { border-left: 1px solid var(--border); }
+        .res-toggle-btn.active {
+            background: var(--brand-light);
+            color: var(--brand);
+            font-weight: 600;
+        }
+        .res-toggle-btn:hover:not(.active) { background: #F8F9FB; }
+        .export-group .btn-primary {
+            border-radius: 0 8px 8px 0;
+            border-left: none;
+        }
+        .header-center { display: flex; align-items: center; gap: 12px; }
+        .scale-control {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; color: var(--text-secondary);
+        }
+        .scale-control input[type="range"] { width: 100px; accent-color: var(--brand); }
+
+        /* ===== 画布区域 ===== */
+        .canvas-area {
+            padding-top: 57px;
+            min-height: 100vh;
+            display: flex; justify-content: center;
+            padding-bottom: 80px; overflow: auto;
+            padding-left: 260px;
+            padding-right: 240px;
+        }
+        .canvas-scroll {
+            padding: 40px 20px;
+            display: flex; justify-content: center;
+        }
+        .canvas-wrapper {
+            transform-origin: top center;
+            transition: transform 0.2s;
+        }
+        .canvas {
+            width: 375px;
+            background: var(--bg);
+            box-shadow: 0 4px 32px rgba(0,0,0,0.10);
+            border-radius: 6px;
+            overflow: visible;
+            position: relative;
+        }
+        .canvas-inner {
+            padding: 70px 24px 40px;
+            min-height: 300px;
+        }
+
+        /* ===== 段落容器（Section） ===== */
+        .cv-section {
+            position: relative;
+            padding: 4px 0;
+            transition: all 0.15s;
+            border-radius: 6px;
+        }
+        .cv-section + .cv-section {
+            margin-top: 0;
+        }
+
+        /* 段落左侧视觉标记 - 编辑态 */
+        .cv-section-marker {
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .cv-section:hover .cv-section-marker,
+        .cv-section.active .cv-section-marker {
+            opacity: 1;
+        }
+
+        /* 段落编号标签 */
+        .cv-section-label {
+            position: absolute;
+            left: -56px;
+            top: 0;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .cv-section:hover .cv-section-label,
+        .cv-section.active .cv-section-label {
+            opacity: 1;
+        }
+
+        /* 段落颜色交替 */
+        .cv-section[data-color="blue"] .cv-section-marker { background: #0099FF; }
+        .cv-section[data-color="blue"] .cv-section-label { background: rgba(0,153,255,0.1); color: #0099FF; }
+        .cv-section[data-color="purple"] .cv-section-marker { background: #7B61FF; }
+        .cv-section[data-color="purple"] .cv-section-label { background: rgba(123,97,255,0.1); color: #7B61FF; }
+        .cv-section[data-color="green"] .cv-section-marker { background: #34C759; }
+        .cv-section[data-color="green"] .cv-section-label { background: rgba(52,199,89,0.1); color: #34C759; }
+        .cv-section[data-color="orange"] .cv-section-marker { background: #FF9500; }
+        .cv-section[data-color="orange"] .cv-section-label { background: rgba(255,149,0,0.1); color: #FF9500; }
+        .cv-section[data-color="pink"] .cv-section-marker { background: #FF2D55; }
+        .cv-section[data-color="pink"] .cv-section-label { background: rgba(255,45,85,0.1); color: #FF2D55; }
+
+        /* 段落悬浮时整体高亮 */
+        .cv-section:hover {
+            background: rgba(0, 153, 255, 0.02);
+        }
+        .cv-section.active {
+            background: rgba(0, 153, 255, 0.03);
+        }
+
+        /* ===== 左侧全局操作面板 ===== */
+        .global-panel {
+            position: fixed;
+            left: 0;
+            top: 57px;
+            width: 240px;
+            height: calc(100vh - 57px);
+            background: var(--white);
+            border-right: 1px solid var(--border);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .global-panel-header {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .global-panel-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .global-panel-header .panel-badge {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            background: #F2F2F7;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .global-panel-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .global-panel-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1.5px solid transparent;
+            gap: 8px;
+        }
+        .global-panel-item:hover {
+            background: #F8F9FB;
+        }
+        .global-panel-item.active {
+            background: var(--brand-light);
+            border-color: rgba(0,153,255,0.2);
+        }
+        .global-panel-item.hidden-section {
+            opacity: 0.45;
+        }
+        .global-panel-item-color {
+            width: 4px;
+            height: 24px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .global-panel-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .global-panel-item-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .global-panel-item-desc {
+            font-size: 10px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+        }
+        .global-panel-item-actions {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .global-panel-item:hover .global-panel-item-actions,
+        .global-panel-item.active .global-panel-item-actions {
+            opacity: 1;
+        }
+        .gp-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 6px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: all 0.12s;
+            white-space: nowrap;
+        }
+        .gp-action-btn:hover {
+            background: #F2F2F7;
+            color: var(--text-primary);
+        }
+        .gp-action-btn.delete-action:hover {
+            background: rgba(255,59,48,0.08);
+            color: #FF3B30;
+        }
+        .gp-action-btn .gp-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+        /* 全局背景色设置 */
+        .global-panel-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+        }
+        .global-panel-footer-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .bg-color-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .bg-color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .bg-color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .bg-color-swatch.active {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--text-primary);
+        }
+
+        /* ===== 右侧局部操作面板 ===== */
+        .local-panel {
+            position: fixed;
+            right: 0;
+            top: 57px;
+            width: 220px;
+            height: calc(100vh - 57px);
+            background: #FAFBFD;
+            border-left: 1px solid var(--border);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .local-panel-empty {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .local-panel-empty .empty-icon {
+            font-size: 28px;
+            opacity: 0.3;
+        }
+        .local-panel-header {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .local-panel-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .local-panel-header .el-type-tag {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            background: var(--brand-light);
+            color: var(--brand);
+            font-weight: 500;
+        }
+        .local-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .local-panel-section {
+            margin-bottom: 16px;
+        }
+        .local-panel-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .lp-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            background: var(--white);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            color: var(--text-primary);
+            transition: all 0.15s;
+            margin-bottom: 6px;
+        }
+        .lp-action-btn:hover {
+            border-color: var(--brand);
+            color: var(--brand);
+            background: var(--brand-light);
+        }
+        .lp-action-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .lp-action-btn:disabled:hover {
+            border-color: var(--border);
+            color: var(--text-primary);
+            background: var(--white);
+        }
+        .lp-action-btn.delete-action {
+            border-color: transparent;
+            color: var(--text-secondary);
+            background: transparent;
+        }
+        .lp-action-btn.delete-action:hover {
+            border-color: rgba(255,59,48,0.2);
+            background: rgba(255,59,48,0.06);
+            color: #FF3B30;
+        }
+        .lp-action-btn .lp-icon {
+            font-size: 14px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .lp-action-btn .lp-label {
+            flex: 1;
+            text-align: left;
+        }
+        /* 开关样式 */
+        .lp-toggle {
+            position: relative;
+            width: 32px;
+            height: 18px;
+            border-radius: 9px;
+            background: #E5E5EA;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+            border: none;
+        }
+        .lp-toggle.active {
+            background: var(--brand);
+        }
+        .lp-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--white);
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .lp-toggle.active::after {
+            transform: translateX(14px);
+        }
+
+        /* ===== 段落内元素 ===== */
+        .cv-element {
+            position: relative;
+            transition: outline 0.15s;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-radius: 3px;
+        }
+        .cv-element:hover {
+            outline-color: rgba(0, 153, 255, 0.15);
+        }
+        .cv-element.selected {
+            outline-color: rgba(0, 153, 255, 0.4);
+        }
+
+        /* 段落内元素间距（紧凑） */
+        .cv-element + .cv-element {
+            margin-top: 12px;
+        }
+
+        /* 元素级操作（已移至右侧面板） */
+
+        /* ===== 文本样式 ===== */
+        .cv-h1 {
+            font-size: 20px; font-weight: 600;
+            text-align: center; letter-spacing: 0.25px;
+            line-height: 1.3; color: var(--text-primary);
+        }
+        .cv-subtitle-wrap {
+            text-align: center;
+        }
+        .cv-subtitle-inner {
+            display: inline-block;
+        }
+        .cv-subtitle {
+            font-size: 24px; font-weight: 600;
+            text-align: center; letter-spacing: 0.5px;
+            line-height: 1.3; color: var(--text-primary);
+        }
+        .cv-subtitle-deco {
+            position: relative;
+            width: 100%;
+            height: 14px;
+            margin-top: 4px;
+        }
+        .cv-subtitle-deco-line-left,
+        .cv-subtitle-deco-line-right {
+            position: absolute;
+            top: 6px;
+            height: 2px;
+            background: var(--brand);
+        }
+        .cv-subtitle-deco-line-left {
+            left: 0;
+            right: calc(50% + 12px);
+        }
+        .cv-subtitle-deco-line-right {
+            left: calc(50% + 12px);
+            right: 0;
+        }
+        .cv-subtitle-deco-arrow {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 14px;
+            line-height: 0;
+        }
+        .cv-subtitle-deco-arrow svg {
+            display: block;
+        }
+        .cv-body {
+            font-size: 16px; font-weight: 400;
+            line-height: 1.6; text-align: center;
+            letter-spacing: 0.25px; color: var(--text-primary);
+        }
+        .cv-note {
+            font-size: 14px; font-weight: 400;
+            line-height: 1.6; text-align: center;
+            letter-spacing: 0.25px;
+            color: rgba(60, 60, 67, 0.60);
+        }
+        .cv-highlight { color: var(--brand); font-weight: 600; }
+
+        /* 图片区块 */
+        .cv-image-block {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .cv-image-block img {
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+        .cv-image-resize-slider {
+            width: 120px;
+            margin: 8px auto 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cv-image-resize-slider input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+        .cv-image-resize-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--brand);
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .cv-image-resize-slider .resize-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            min-width: 32px;
+            text-align: center;
+            user-select: none;
+        }
+
+        /* 可编辑文本 */
+        .cv-editable {
+            cursor: text; min-height: 1em; position: relative;
+        }
+        .cv-editable:empty::before {
+            content: attr(data-placeholder);
+            color: var(--text-secondary);
+            pointer-events: none; font-style: italic; opacity: 0.6;
+        }
+        .cv-editable:focus {
+            outline: none;
+            background: rgba(0, 153, 255, 0.04);
+            border-radius: 4px;
+        }
+
+        /* ===== 段落内添加按钮 ===== */
+        .add-element-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 12px;
+            padding: 6px 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .cv-section:hover .add-element-btn {
+            opacity: 1;
+        }
+        .add-element-btn button {
+            padding: 4px 14px;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+        }
+        .add-element-btn button:hover {
+            border-color: var(--brand);
+            color: var(--brand);
+            background: var(--brand-light);
+        }
+
+        /* ===== 段落之间的添加按钮 ===== */
+        .add-section-between {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            position: relative;
+            z-index: 5;
+        }
+        .add-section-between .add-line {
+            position: absolute; top: 50%; left: -12px; right: -12px;
+            height: 1px; background: transparent; transition: background 0.2s;
+        }
+        .add-section-between:hover .add-line { background: var(--brand); opacity: 0.3; }
+        .add-section-between .add-trigger {
+            position: relative;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            z-index: 2;
+        }
+        .add-section-between:hover .add-trigger { opacity: 1; }
+        .add-section-between .add-trigger:hover {
+            background: var(--brand); color: var(--white);
+            border-color: var(--brand); transform: scale(1.1);
+        }
+
+        /* 弹出菜单 */
+        .add-menu {
+            position: absolute;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+            padding: 8px;
+            display: none;
+            z-index: 50;
+            white-space: nowrap;
+        }
+        .add-menu.show { display: flex; gap: 6px; }
+        .add-menu-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 6px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            width: 76px;
+            font-family: inherit;
+        }
+        .add-menu-item:hover {
+            border-color: var(--brand);
+            background: var(--brand-light);
+        }
+        .add-menu-item:hover .add-menu-label { color: var(--brand); }
+        .add-menu-thumb {
+            width: 60px;
+            height: 40px;
+            border-radius: 4px;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .add-menu-label {
+            font-size: 11px;
+            color: var(--text-primary);
+            font-weight: 500;
+            white-space: nowrap;
+            line-height: 1;
+        }
+
+        /* ===== 搜索引导组件 ===== */
+        .cv-search-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+        }
+        .cv-search-bar {
+            display: inline-flex;
+            align-items: center;
+            background: #0099FF;
+            border-radius: 100px;
+            padding: 5px 5px 5px 5px;
+            gap: 0;
+            max-width: 100%;
+        }
+        .cv-search-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px 0 8px;
+            flex-shrink: 0;
+        }
+        .cv-search-logo svg {
+            width: 46px;
+            height: 19px;
+        }
+        .cv-search-input-wrap {
+            display: flex;
+            align-items: center;
+            background: #FFFFFF;
+            border-radius: 100px;
+            padding: 6px 12px;
+            gap: 6px;
+            min-width: 80px;
+        }
+        .cv-search-text {
+            font-size: 16px;
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+            font-weight: 500;
+            color: #1A1C1E;
+            outline: none;
+            border: none;
+            white-space: nowrap;
+            min-width: 30px;
+            line-height: 1.5;
+        }
+        .cv-search-text:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
+        }
+        .cv-search-icon {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        .cv-search-slogan {
+            font-size: 14px;
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+            font-weight: 400;
+            color: rgba(0, 0, 0, 0.90);
+            letter-spacing: 0.25px;
+            text-align: center;
+            outline: none;
+            border: none;
+            min-width: 60px;
+            line-height: 1.5;
+        }
+        .cv-search-slogan:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
+        }
+
+        /* 底部添加段落 */
+        .canvas-add-bottom {
+            padding: 20px 24px;
+            display: flex; justify-content: center;
+        }
+        .add-bottom-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 10px 20px;
+            border: 1.5px dashed var(--border);
+            border-radius: 10px;
+            background: transparent; cursor: pointer;
+            font-size: 13px; font-family: inherit;
+            color: var(--text-secondary); transition: all 0.2s;
+        }
+        .add-bottom-btn:hover {
+            border-color: var(--brand); color: var(--brand);
+            background: var(--brand-light);
+        }
+
+        /* 图片占位区 */
+        .cv-image-placeholder {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 28px 16px;
+            text-align: center; cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary); font-size: 13px;
+        }
+        .cv-image-placeholder:hover {
+            border-color: var(--brand);
+            background: var(--brand-light); color: var(--brand);
+        }
+        .cv-image-placeholder .upload-icon {
+            font-size: 24px; margin-bottom: 4px; opacity: 0.4;
+        }
+
+        /* ===== 按钮通用 ===== */
+        .btn-primary {
+            padding: 8px 20px; background: var(--brand);
+            color: var(--white); border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 500;
+            cursor: pointer; font-family: inherit;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #0088E6; }
+        .btn-secondary {
+            padding: 8px 20px; background: var(--white);
+            color: var(--text-primary);
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 13px; font-weight: 500;
+            cursor: pointer; font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--brand); color: var(--brand); }
+
+        /* ===== 模板弹窗 ===== */
+        .template-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .template-modal-overlay.show { display: flex; }
+        .template-modal {
+            background: var(--white); border-radius: 16px;
+            padding: 28px; width: 400px;
+            max-height: 60vh; overflow-y: auto;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+        }
+        .template-modal h3 { font-size: 16px; margin-bottom: 16px; }
+        .template-modal-list { display: flex; flex-direction: column; gap: 8px; }
+        .template-modal-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; border: 1px solid var(--border);
+            border-radius: 10px; cursor: pointer; transition: all 0.15s;
+        }
+        .template-modal-item:hover { border-color: var(--brand); background: var(--brand-light); }
+        .template-modal-item .tpl-name { font-size: 14px; }
+        .template-modal-item .tpl-del {
+            font-size: 18px; color: #C7C7CC; cursor: pointer; padding: 4px;
+        }
+        .template-modal-item .tpl-del:hover { color: #FF3B30; }
+        .template-modal-empty {
+            text-align: center; padding: 24px;
+            color: var(--text-secondary); font-size: 13px;
+        }
+        .template-modal-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+        /* 导出遮罩 */
+        .export-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 1000;
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 16px;
+        }
+        .export-overlay.show { display: flex; }
+        .export-overlay .spinner {
+            width: 44px; height: 44px;
+            border: 3px solid var(--white);
+            border-top-color: var(--brand);
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        .export-overlay .export-text { color: var(--white); font-size: 14px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 选中文本浮层 */
+        .text-format-toolbar {
+            position: fixed; z-index: 150;
+            background: var(--white); border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.16);
+            padding: 6px; display: none;
+            align-items: center; gap: 2px;
+        }
+        .text-format-toolbar.show { display: flex; }
+        .text-format-toolbar::after {
+            content: ''; position: absolute;
+            bottom: -6px; left: 50%; transform: translateX(-50%);
+            width: 12px; height: 6px;
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+            background: var(--white);
+        }
+        .fmt-btn {
+            width: 32px; height: 32px; border: none;
+            background: transparent; border-radius: 6px;
+            cursor: pointer; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); transition: background 0.15s;
+        }
+        .fmt-btn:hover { background: #F2F2F7; }
+        .fmt-btn.active { background: var(--brand-light); color: var(--brand); }
+        .fmt-btn-bold { font-weight: 800; font-size: 15px; }
+        .fmt-divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+        .fmt-color-dot {
+            width: 18px; height: 18px; border-radius: 50%;
+            border: 2px solid var(--border); cursor: pointer;
+            transition: transform 0.15s, border-color 0.15s;
+        }
+        .fmt-color-dot:hover { transform: scale(1.15); }
+        .fmt-color-dot.active {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--text-primary);
+        }
+        .fmt-color-label {
+            font-size: 11px; color: var(--text-secondary);
+            padding: 0 4px; white-space: nowrap;
+        }
+
+        /* ===== 拖拽排序 ===== */
+        .cv-section.dragging {
+            opacity: 0.4;
+            outline: 2px dashed var(--brand);
+            outline-offset: -2px;
+        }
+        .cv-section.drag-over-top::before {
+            content: '';
+            position: absolute;
+            top: -4px; left: -20px; right: -44px;
+            height: 3px;
+            background: var(--brand);
+            border-radius: 2px;
+            z-index: 20;
+        }
+        .cv-section.drag-over-bottom::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: -20px; right: -44px;
+            height: 3px;
+            background: var(--brand);
+            border-radius: 2px;
+            z-index: 20;
+        }
+        .cv-section-drag-handle {
+            position: absolute;
+            left: -52px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            cursor: grab;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            border-radius: 4px;
+        }
+        .cv-section-drag-handle:active { cursor: grabbing; }
+        .cv-section:hover .cv-section-drag-handle {
+            opacity: 0.5;
+        }
+        .cv-section:hover .cv-section-drag-handle:hover {
+            opacity: 1;
+            background: var(--brand-light);
+        }
+        .cv-section-drag-handle .drag-dot {
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        /* ===== 隐藏元素样式 ===== */
+        .cv-element.el-hidden {
+            opacity: 0.3;
+            position: relative;
+        }
+        .cv-element.el-hidden::after {
+            content: '已隐藏';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: rgba(255,255,255,0.85);
+            padding: 2px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        .cv-section.section-hidden > .cv-element {
+            opacity: 0.3;
+        }
+
+        /* Toast */
+        .paste-toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0,0,0,0.75); color: var(--white);
+            padding: 10px 24px; border-radius: 8px;
+            font-size: 13px; z-index: 300;
+            transition: transform 0.3s ease; pointer-events: none;
+        }
+        .paste-toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>宣发长图配置工具</h1>
+        <div class="header-center">
+            <div class="scale-control">
+                <span>缩放</span>
+                <input type="range" id="scaleRange" min="50" max="150" value="100">
+                <span id="scaleValue">100%</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" id="templateBtn">模板</button>
+            <button class="btn-secondary" id="saveTemplateBtn">保存模板</button>
+            <div class="export-group">
+                <div class="res-toggle">
+                    <button class="res-toggle-btn" data-scale="2" id="res2x">750 @2x</button>
+                    <button class="res-toggle-btn active" data-scale="3" id="res3x">1125 @3x</button>
+                </div>
+                <button class="btn-primary" id="exportBtn">导出图片</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-area">
+        <!-- 左侧全局面板 -->
+        <div class="global-panel" id="globalPanel">
+            <div class="global-panel-header">
+                <h3>段落管理</h3>
+                <span class="panel-badge" id="sectionCount">0 个段落</span>
+            </div>
+            <div class="global-panel-list" id="globalPanelList"></div>
+            <div class="global-panel-footer">
+                <div class="global-panel-footer-title">画布背景色</div>
+                <div class="bg-color-grid" id="bgColorGrid"></div>
+            </div>
+        </div>
+
+        <div class="canvas-scroll">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <div class="canvas" id="canvas">
+                    <div class="canvas-inner" id="canvasInner"></div>
+                    <div class="canvas-add-bottom">
+                        <button class="add-bottom-btn" id="addBottomBtn">+ 添加新段落</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧局部面板 -->
+        <div class="local-panel" id="localPanel">
+            <div class="local-panel-empty" id="localPanelEmpty">
+                <div class="empty-icon">◇</div>
+                <div>点击画布中的元素<br>查看操作选项</div>
+            </div>
+            <div id="localPanelContent" style="display:none;flex-direction:column;height:100%;"></div>
+        </div>
+    </div>
+
+    <div class="add-menu" id="bottomAddMenu" style="position:fixed;z-index:999">
+        <div class="add-menu-item" data-type="subtitle">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">标题文字</text><line x1="4" y1="20" x2="16" y2="20" stroke="#0099FF" stroke-width="1.5"/><path d="M22 17L24 22L26 17" stroke="#0099FF" stroke-width="1.2" fill="none"/><line x1="32" y1="20" x2="44" y2="20" stroke="#0099FF" stroke-width="1.5"/></svg>
+            </div>
+            <span class="add-menu-label">模块标题</span>
+        </div>
+        <div class="add-menu-item" data-type="h1">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">大字正文</text></svg>
+            </div>
+            <span class="add-menu-label">正文大字</span>
+        </div>
+        <div class="add-menu-item" data-type="body">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="6" width="32" height="2" rx="1" fill="#999"/><rect x="10" y="12" width="28" height="2" rx="1" fill="#bbb"/><rect x="12" y="18" width="24" height="2" rx="1" fill="#ccc"/></svg>
+            </div>
+            <span class="add-menu-label">正文标准</span>
+        </div>
+        <div class="add-menu-item" data-type="note">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="10" y="8" width="28" height="1.5" rx="0.75" fill="#bbb"/><rect x="14" y="14" width="20" height="1.5" rx="0.75" fill="#ccc"/><rect x="12" y="20" width="24" height="1.5" rx="0.75" fill="#ddd"/></svg>
+            </div>
+            <span class="add-menu-label">注释</span>
+        </div>
+        <div class="add-menu-item" data-type="image">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="4" width="32" height="20" rx="3" stroke="#ccc" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/><circle cx="18" cy="12" r="3" fill="#ddd"/><path d="M12 22L20 14L28 20L34 16L38 22" stroke="#ccc" stroke-width="1.2" fill="none"/></svg>
+            </div>
+            <span class="add-menu-label">图片模块</span>
+        </div>
+        <div class="add-menu-item" data-type="search">
+            <div class="add-menu-thumb">
+                <svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="6" y="6" width="36" height="12" rx="6" fill="#0099FF"/><rect x="16" y="8" width="24" height="8" rx="4" fill="#fff"/><circle cx="36" cy="12" r="2.5" stroke="#999" stroke-width="1" fill="none"/><line x1="37.5" y1="14" x2="39" y2="15.5" stroke="#999" stroke-width="1"/><text x="24" y="26" text-anchor="middle" font-size="5" fill="#999">slogan</text></svg>
+            </div>
+            <span class="add-menu-label">搜索引导</span>
+        </div>
+    </div>
+
+    <div class="template-modal-overlay" id="templateModal">
+        <div class="template-modal">
+            <h3>已保存的模板</h3>
+            <div class="template-modal-list" id="templateList"></div>
+            <div class="template-modal-footer">
+                <button class="btn-secondary" id="closeTemplateModal">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="export-overlay" id="exportOverlay">
+        <div class="spinner"></div>
+        <div class="export-text">正在生成图片...</div>
+    </div>
+
+    <div class="paste-toast" id="pasteToast">图片已粘贴</div>
+
+    <div class="text-format-toolbar" id="textFormatToolbar">
+        <button class="fmt-btn fmt-btn-bold" id="fmtBold" title="加粗">B</button>
+        <div class="fmt-divider"></div>
+        <span class="fmt-color-label">颜色</span>
+        <div class="fmt-color-dot" data-color="#0099FF" style="background:#0099FF;" title="QQ品牌蓝"></div>
+        <div class="fmt-color-dot" data-color="#F74C30" style="background:#F74C30;" title="QQ警示红"></div>
+        <div class="fmt-color-dot" data-color="inherit" style="background:var(--text-primary);" title="默认黑色"></div>
+    </div>
+
+    <script>
+    (function() {
+        // ===== 数据模型 =====
+        // sections: [{id, hidden?, elements: [{id, type, content, richHtml?, imageData?, hidden?}]}]
+        let sections = [];
+        let sectionIdCounter = 0;
+        let elementIdCounter = 0;
+        let selectedElId = null;
+        let activeSectionId = null;
+        let templates = JSON.parse(localStorage.getItem('longimg_templates') || '[]');
+
+        const SECTION_COLORS = ['blue', 'purple', 'green', 'orange', 'pink'];
+        const COLOR_HEX = { blue: '#0099FF', purple: '#7B61FF', green: '#34C759', orange: '#FF9500', pink: '#FF2D55' };
+        const TYPE_LABELS = { h1: '正文-大', subtitle: '模块标题', body: '正文', note: '注释', image: '图片', search: '搜索引导' };
+
+        // 全局背景色预制色卡（淡色调 + 清新渐变）
+        const BG_COLOR_PRESETS = [
+            { name: '淡蓝', value: '#F0F5FF' },
+            { name: '淡紫', value: '#F3F0FF' },
+            { name: '淡绿', value: '#EDFCF2' },
+            { name: '淡橙', value: '#FFF6ED' },
+            { name: '淡粉', value: '#FFF0F3' },
+            { name: '淡青', value: '#ECFEFF' },
+            { name: '淡黄', value: '#FEFCE8' },
+            { name: '纯白', value: '#FFFFFF' },
+            { name: '薄荷渐变', value: 'linear-gradient(180deg, #E0F7FA 0%, #F1F8E9 100%)', gradient: true },
+            { name: '蜜桃渐变', value: 'linear-gradient(180deg, #FFF0F3 0%, #FFF8E1 100%)', gradient: true },
+            { name: '天空渐变', value: 'linear-gradient(180deg, #E8F4FD 0%, #F3E8FF 100%)', gradient: true },
+            { name: '晨雾渐变', value: 'linear-gradient(180deg, #F5F0FF 0%, #E0F2F1 100%)', gradient: true },
+        ];
+        let currentBgColor = '#F0F5FF';
+        let exportScale = 3; // 默认@3x
+
+        // ===== 拖拽排序状态 =====
+        const dragState = { dragSectionId: null };
+
+        function clearDragIndicators() {
+            document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+                el.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        }
+
+        function reorderSection(draggedId, targetId, insertBefore) {
+            const dragIdx = sections.findIndex(s => s.id === draggedId);
+            if (dragIdx === -1) return;
+            const [dragged] = sections.splice(dragIdx, 1);
+            let targetIdx = sections.findIndex(s => s.id === targetId);
+            if (targetIdx === -1) { sections.push(dragged); }
+            else {
+                if (!insertBefore) targetIdx++;
+                sections.splice(targetIdx, 0, dragged);
+            }
+            render();
+        }
+
+        // ===== 获取段落摘要 =====
+        function getSectionSummary(section) {
+            for (const el of section.elements) {
+                if ((el.type === 'h1' || el.type === 'subtitle' || el.type === 'body' || el.type === 'note') && el.content && el.content.trim()) {
+                    const t = el.content.trim();
+                    return t.length > 12 ? t.slice(0, 12) + '…' : t;
+                }
+            }
+            return section.elements.map(e => TYPE_LABELS[e.type] || e.type).join(' + ');
+        }
+
+        // ===== 左侧全局面板渲染 =====
+        function renderGlobalPanel() {
+            const list = document.getElementById('globalPanelList');
+            document.getElementById('sectionCount').textContent = sections.length + ' 个段落';
+            if (sections.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:32px 12px;color:var(--text-secondary);font-size:12px;">暂无段落</div>';
+                return;
+            }
+            list.innerHTML = '';
+            sections.forEach((section, sIdx) => {
+                const item = document.createElement('div');
+                item.className = 'global-panel-item' + (section.id === activeSectionId ? ' active' : '') + (section.hidden ? ' hidden-section' : '');
+                const colorName = SECTION_COLORS[sIdx % SECTION_COLORS.length];
+                item.innerHTML = `
+                    <div class="global-panel-item-color" style="background:${COLOR_HEX[colorName]}"></div>
+                    <div class="global-panel-item-info">
+                        <div class="global-panel-item-title">P${sIdx + 1} · ${getSectionSummary(section)}</div>
+                        <div class="global-panel-item-desc">${section.elements.length} 个元素${section.hidden ? ' · 已隐藏' : ''}</div>
+                    </div>
+                    <div class="global-panel-item-actions">
+                        <button class="gp-action-btn" data-act="up" ${sIdx === 0 ? 'disabled' : ''}><span class="gp-icon">↑</span></button>
+                        <button class="gp-action-btn" data-act="down" ${sIdx === sections.length - 1 ? 'disabled' : ''}><span class="gp-icon">↓</span></button>
+                        <button class="gp-action-btn" data-act="toggle"><span class="gp-icon">${section.hidden ? '◉' : '◎'}</span></button>
+                        <button class="gp-action-btn delete-action" data-act="delete"><span class="gp-icon">✕</span></button>
+                    </div>`;
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.gp-action-btn')) return;
+                    setActiveSection(section.id);
+                    const sEl = document.querySelector(`.cv-section[data-section-id="${section.id}"]`);
+                    if (sEl) sEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    renderGlobalPanel(); renderLocalPanel();
+                });
+                item.querySelectorAll('.gp-action-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const act = btn.dataset.act;
+                        if (act === 'up') handleSectionAction(section.id, 'section-up');
+                        else if (act === 'down') handleSectionAction(section.id, 'section-down');
+                        else if (act === 'toggle') { section.hidden = !section.hidden; render(); }
+                        else if (act === 'delete') handleSectionAction(section.id, 'section-delete');
+                    });
+                });
+                list.appendChild(item);
+            });
+        }
+
+        // ===== 右侧局部面板渲染 =====
+        function renderLocalPanel() {
+            const empty = document.getElementById('localPanelEmpty');
+            const content = document.getElementById('localPanelContent');
+            let selectedSection = null, selectedEl = null;
+            if (selectedElId) {
+                for (const s of sections) {
+                    const el = s.elements.find(e => e.id === selectedElId);
+                    if (el) { selectedSection = s; selectedEl = el; break; }
+                }
+            }
+            if (!selectedEl && activeSectionId) selectedSection = sections.find(s => s.id === activeSectionId);
+            if (!selectedEl) { empty.style.display = 'flex'; content.style.display = 'none'; return; }
+            empty.style.display = 'none'; content.style.display = 'flex';
+            const eIdx = selectedSection.elements.indexOf(selectedEl);
+            const isFirst = eIdx === 0, isLast = eIdx === selectedSection.elements.length - 1;
+            content.innerHTML = `
+                <div class="local-panel-header"><h3>元素操作 <span class="el-type-tag">${TYPE_LABELS[selectedEl.type] || selectedEl.type}</span></h3></div>
+                <div class="local-panel-content">
+                    <div class="local-panel-section">
+                        <div class="local-panel-section-title">排序</div>
+                        <button class="lp-action-btn" data-act="el-up" ${isFirst ? 'disabled' : ''}><span class="lp-icon">↑</span><span class="lp-label">上移元素</span></button>
+                        <button class="lp-action-btn" data-act="el-down" ${isLast ? 'disabled' : ''}><span class="lp-icon">↓</span><span class="lp-label">下移元素</span></button>
+                    </div>
+                    <div class="local-panel-section">
+                        <div class="local-panel-section-title">可见性</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;">
+                            <span style="font-size:12px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+                                <span style="font-size:14px;">${selectedEl.hidden ? '◎' : '◉'}</span>${selectedEl.hidden ? '已隐藏' : '显示中'}
+                            </span>
+                            <button class="lp-toggle ${selectedEl.hidden ? '' : 'active'}" data-act="el-toggle"></button>
+                        </div>
+                    </div>
+                    ${selectedEl.type === 'search' ? `
+                    <div class="local-panel-section">
+                        <div class="local-panel-section-title">搜索条主色</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;">
+                            ${['#0099FF','#7B61FF','#34C759','#FF9500','#FF2D55','#1A1C1E','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD'].map(c =>
+                                `<div class="search-color-dot${(selectedEl.searchColor || '#0099FF') === c ? ' active' : ''}" data-color="${c}" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${(selectedEl.searchColor || '#0099FF') === c ? 'var(--brand)' : 'transparent'};box-sizing:border-box;transition:border 0.15s;"></div>`
+                            ).join('')}
+                            <label class="search-color-dot" style="width:24px;height:24px;border-radius:50%;background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" title="自定义颜色">
+                                <input type="color" value="${selectedEl.searchColor || '#0099FF'}" style="position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;" class="search-color-custom">
+                            </label>
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="local-panel-section">
+                        <div class="local-panel-section-title">操作</div>
+                        <button class="lp-action-btn delete-action" data-act="el-delete"><span class="lp-icon">✕</span><span class="lp-label">删除元素</span></button>
+                    </div>
+                </div>`;
+            content.querySelectorAll('.lp-action-btn, .lp-toggle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const act = btn.dataset.act;
+                    if (act === 'el-up' && eIdx > 0) { [selectedSection.elements[eIdx], selectedSection.elements[eIdx - 1]] = [selectedSection.elements[eIdx - 1], selectedSection.elements[eIdx]]; render(); }
+                    else if (act === 'el-down' && !isLast) { [selectedSection.elements[eIdx], selectedSection.elements[eIdx + 1]] = [selectedSection.elements[eIdx + 1], selectedSection.elements[eIdx]]; render(); }
+                    else if (act === 'el-toggle') { selectedEl.hidden = !selectedEl.hidden; render(); }
+                    else if (act === 'el-delete') { removeElement(selectedSection.id, selectedEl.id); }
+                });
+            });
+            // 搜索色块点击事件
+            content.querySelectorAll('.search-color-dot[data-color]').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    selectedEl.searchColor = dot.dataset.color;
+                    render();
+                });
+            });
+            const customColorInput = content.querySelector('.search-color-custom');
+            if (customColorInput) {
+                customColorInput.addEventListener('input', (e) => {
+                    selectedEl.searchColor = e.target.value;
+                    render();
+                });
+            }
+        }
+
+        // ===== 初始化默认内容 =====
+        function initDefault() {
+            sections = [
+                {
+                    id: ++sectionIdCounter,
+                    elements: [
+                        { id: ++elementIdCounter, type: 'h1', content: '输入正文-大' },
+                        { id: ++elementIdCounter, type: 'body', content: '输入正文内容' },
+                        { id: ++elementIdCounter, type: 'image', content: '', imageData: null },
+                    ]
+                },
+            ];
+            render();
+        }
+
+        // ===== 背景色网格渲染 =====
+        function renderBgColorGrid() {
+            const grid = document.getElementById('bgColorGrid');
+            grid.innerHTML = '';
+            BG_COLOR_PRESETS.forEach(preset => {
+                const swatch = document.createElement('div');
+                swatch.className = 'bg-color-swatch' + (currentBgColor === preset.value ? ' active' : '');
+                swatch.style.background = preset.value;
+                swatch.title = preset.name;
+                swatch.addEventListener('click', () => {
+                    currentBgColor = preset.value;
+                    applyBgColor(preset.value);
+                    renderBgColorGrid();
+                });
+                grid.appendChild(swatch);
+            });
+        }
+
+        function applyBgColor(color) {
+            const canvasEl = document.getElementById('canvas');
+            if (color.startsWith('linear-gradient')) {
+                canvasEl.style.background = color;
+                document.documentElement.style.setProperty('--bg', '#F0F5FF');
+            } else {
+                canvasEl.style.background = color;
+                document.documentElement.style.setProperty('--bg', color);
+            }
+        }
+
+        // ===== 核心渲染 =====
+        function render() {
+            const container = document.getElementById('canvasInner');
+            container.innerHTML = '';
+
+            if (sections.length === 0) {
+                container.innerHTML = `<div style="text-align:center;color:var(--text-secondary);padding:60px 0;font-size:14px;">
+                    点击下方「+ 添加新段落」开始
+                </div>`;
+                renderGlobalPanel(); renderLocalPanel();
+                return;
+            }
+
+            sections.forEach((section, sIdx) => {
+                // 段落间添加按钮
+                if (sIdx > 0) {
+                    container.appendChild(createAddSectionBetween(sIdx));
+                }
+
+                const sectionEl = document.createElement('div');
+                sectionEl.className = 'cv-section';
+                sectionEl.dataset.sectionId = section.id;
+                const colorIdx = sIdx % SECTION_COLORS.length;
+                sectionEl.dataset.color = SECTION_COLORS[colorIdx];
+
+                if (section.id === activeSectionId) sectionEl.classList.add('active');
+                if (section.hidden) sectionEl.classList.add('section-hidden');
+
+                // 左侧色条标记
+                const marker = document.createElement('div');
+                marker.className = 'cv-section-marker';
+                sectionEl.appendChild(marker);
+
+                // 段落编号标签
+                const label = document.createElement('div');
+                label.className = 'cv-section-label';
+                label.textContent = `P${sIdx + 1}`;
+                sectionEl.appendChild(label);
+
+                // 拖拽手柄
+                const dragHandle = document.createElement('div');
+                dragHandle.className = 'cv-section-drag-handle';
+                dragHandle.setAttribute('draggable', 'true');
+                dragHandle.innerHTML = '<div class="drag-dot"></div><div class="drag-dot"></div><div class="drag-dot"></div><div class="drag-dot"></div><div class="drag-dot"></div><div class="drag-dot"></div>';
+                dragHandle.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(section.id));
+                    sectionEl.classList.add('dragging');
+                    dragState.dragSectionId = section.id;
+                });
+                dragHandle.addEventListener('dragend', () => {
+                    sectionEl.classList.remove('dragging');
+                    clearDragIndicators();
+                    dragState.dragSectionId = null;
+                });
+                sectionEl.appendChild(dragHandle);
+
+                // 段落拖拽目标处理
+                sectionEl.addEventListener('dragover', (e) => {
+                    if (!dragState.dragSectionId || dragState.dragSectionId === section.id) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    clearDragIndicators();
+                    const rect = sectionEl.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (e.clientY < midY) {
+                        sectionEl.classList.add('drag-over-top');
+                    } else {
+                        sectionEl.classList.add('drag-over-bottom');
+                    }
+                });
+                sectionEl.addEventListener('dragleave', () => {
+                    sectionEl.classList.remove('drag-over-top', 'drag-over-bottom');
+                });
+                sectionEl.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!dragState.dragSectionId || dragState.dragSectionId === section.id) return;
+                    const rect = sectionEl.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    const insertBefore = e.clientY < midY;
+                    reorderSection(dragState.dragSectionId, section.id, insertBefore);
+                    dragState.dragSectionId = null;
+                    clearDragIndicators();
+                });
+
+                // 渲染段落内元素
+                section.elements.forEach((el, eIdx) => {
+                    const elWrap = document.createElement('div');
+                    elWrap.className = 'cv-element';
+                    elWrap.dataset.elId = el.id;
+                    if (el.id === selectedElId) elWrap.classList.add('selected');
+                    if (el.hidden) elWrap.classList.add('el-hidden');
+
+                    // 渲染内容
+                    switch (el.type) {
+                        case 'h1': {
+                            const textEl = document.createElement('div');
+                            textEl.className = 'cv-h1 cv-editable';
+                            textEl.contentEditable = 'true';
+                            textEl.dataset.placeholder = '输入正文-大';
+                            textEl.dataset.elId = el.id;
+                            textEl.dataset.sectionId = section.id;
+                            textEl.innerHTML = el.richHtml || renderTextContent(el.content);
+                            textEl.addEventListener('input', () => syncText(section.id, el.id, textEl));
+                            textEl.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            textEl.addEventListener('paste', handleTextPaste);
+                            elWrap.appendChild(textEl);
+                            break;
+                        }
+                        case 'body': {
+                            const textEl = document.createElement('div');
+                            textEl.className = 'cv-body cv-editable';
+                            textEl.contentEditable = 'true';
+                            textEl.dataset.placeholder = '输入正文内容';
+                            textEl.dataset.elId = el.id;
+                            textEl.dataset.sectionId = section.id;
+                            textEl.innerHTML = el.richHtml || renderTextContent(el.content);
+                            textEl.addEventListener('input', () => syncText(section.id, el.id, textEl));
+                            textEl.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            textEl.addEventListener('paste', handleTextPaste);
+                            elWrap.appendChild(textEl);
+                            break;
+                        }
+                        case 'note': {
+                            const textEl = document.createElement('div');
+                            textEl.className = 'cv-note cv-editable';
+                            textEl.contentEditable = 'true';
+                            textEl.dataset.placeholder = '输入注释内容';
+                            textEl.dataset.elId = el.id;
+                            textEl.dataset.sectionId = section.id;
+                            textEl.innerHTML = el.richHtml || renderTextContent(el.content);
+                            textEl.addEventListener('input', () => syncText(section.id, el.id, textEl));
+                            textEl.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            textEl.addEventListener('paste', handleTextPaste);
+                            elWrap.appendChild(textEl);
+                            break;
+                        }
+                        case 'subtitle': {
+                            const wrap = document.createElement('div');
+                            wrap.className = 'cv-subtitle-wrap';
+                            const inner = document.createElement('div');
+                            inner.className = 'cv-subtitle-inner';
+                            const textEl = document.createElement('div');
+                            textEl.className = 'cv-subtitle cv-editable';
+                            textEl.contentEditable = 'true';
+                            textEl.dataset.placeholder = '模块标题(≤6字)';
+                            textEl.dataset.elId = el.id;
+                            textEl.dataset.sectionId = section.id;
+                            textEl.innerHTML = el.richHtml || renderTextContent(el.content);
+                            textEl.addEventListener('input', () => {
+                                const plain = textEl.textContent.replace(/\s/g, '');
+                                if (plain.length > 6) {
+                                    const sel = window.getSelection();
+                                    const range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+                                    textEl.textContent = plain.slice(0, 6);
+                                    if (range) {
+                                        const newRange = document.createRange();
+                                        newRange.selectNodeContents(textEl);
+                                        newRange.collapse(false);
+                                        sel.removeAllRanges();
+                                        sel.addRange(newRange);
+                                    }
+                                    showToast('模块标题最多6个字');
+                                }
+                                syncText(section.id, el.id, textEl);
+                            });
+                            textEl.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            textEl.addEventListener('paste', handleTextPaste);
+                            inner.appendChild(textEl);
+                            // 装饰线 — 与文字等宽
+                            const deco = document.createElement('div');
+                            deco.className = 'cv-subtitle-deco';
+                            deco.innerHTML = `
+                                <div class="cv-subtitle-deco-line-left"></div>
+                                <div class="cv-subtitle-deco-arrow">
+                                    <svg width="24" height="14" viewBox="0 0 24 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M0 0L12 14L24 0" stroke="#0099FF" stroke-width="2" fill="none"/>
+                                    </svg>
+                                </div>
+                                <div class="cv-subtitle-deco-line-right"></div>
+                            `;
+                            inner.appendChild(deco);
+                            wrap.appendChild(inner);
+                            elWrap.appendChild(wrap);
+                            break;
+                        }
+                        case 'image': {
+                            if (el.imageData) {
+                                const imgWrap = document.createElement('div');
+                                imgWrap.className = 'cv-image-block';
+                                const img = document.createElement('img');
+                                img.src = el.imageData;
+                                const imgScale = el.imageScale || 100;
+                                img.style.width = imgScale + '%';
+                                img.style.height = 'auto';
+                                img.addEventListener('click', () => {
+                                    selectElement(el.id);
+                                    setActiveSection(section.id);
+                                    triggerImageUpload(section.id, el.id);
+                                });
+                                imgWrap.appendChild(img);
+                                // 拖拽滑块
+                                const slider = document.createElement('div');
+                                slider.className = 'cv-image-resize-slider';
+                                slider.innerHTML = `<span class="resize-label" style="font-size:13px;">🖼</span><input type="range" min="10" max="100" value="${imgScale}"><span class="resize-label">${imgScale}%</span>`;
+                                const rangeInput = slider.querySelector('input');
+                                const labelSpan = slider.querySelectorAll('.resize-label')[1];
+                                rangeInput.addEventListener('input', () => {
+                                    const v = parseInt(rangeInput.value);
+                                    img.style.width = v + '%';
+                                    labelSpan.textContent = v + '%';
+                                    el.imageScale = v;
+                                });
+                                rangeInput.addEventListener('click', (e) => e.stopPropagation());
+                                imgWrap.appendChild(slider);
+                                elWrap.appendChild(imgWrap);
+                            } else {
+                                const placeholder = document.createElement('div');
+                                placeholder.className = 'cv-image-placeholder';
+                                placeholder.innerHTML = `<div class="upload-icon">+</div><div>点击上传 / 拖拽 / Ctrl+V</div>`;
+                                placeholder.addEventListener('click', () => {
+                                    selectElement(el.id);
+                                    setActiveSection(section.id);
+                                    triggerImageUpload(section.id, el.id);
+                                });
+                                elWrap.appendChild(placeholder);
+                            }
+                            break;
+                        }
+                        case 'search': {
+                            const searchColor = el.searchColor || '#0099FF';
+                            const wrap = document.createElement('div');
+                            wrap.className = 'cv-search-wrap';
+                            // 搜索条
+                            const bar = document.createElement('div');
+                            bar.className = 'cv-search-bar';
+                            bar.style.background = searchColor;
+                            // QQ logo 区域
+                            bar.innerHTML = `<div class="cv-search-logo"><img src="assets/CodeBubbyAssets/321_3659/1.svg" style="height:18px;margin-right:2px;"><img src="assets/CodeBubbyAssets/321_3659/2.svg" style="height:13px;"></div>`;
+                            // 白色输入区
+                            const inputWrap = document.createElement('div');
+                            inputWrap.className = 'cv-search-input-wrap';
+                            const searchText = document.createElement('div');
+                            searchText.className = 'cv-search-text cv-editable';
+                            searchText.contentEditable = 'true';
+                            searchText.dataset.placeholder = '输入搜索词';
+                            searchText.dataset.elId = el.id;
+                            searchText.dataset.sectionId = section.id;
+                            searchText.textContent = el.content || '';
+                            searchText.addEventListener('input', () => {
+                                const s = sections.find(ss => ss.id === section.id);
+                                if (!s) return;
+                                const e2 = s.elements.find(ee => ee.id === el.id);
+                                if (e2) e2.content = searchText.textContent;
+                                renderGlobalPanel();
+                            });
+                            searchText.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            searchText.addEventListener('paste', handleTextPaste);
+                            // 搜索图标
+                            const searchIcon = document.createElement('div');
+                            searchIcon.className = 'cv-search-icon';
+                            searchIcon.innerHTML = `<img src="assets/CodeBubbyAssets/321_3659/3.svg" style="width:20px;height:20px;">`;
+                            inputWrap.appendChild(searchText);
+                            inputWrap.appendChild(searchIcon);
+                            bar.appendChild(inputWrap);
+                            wrap.appendChild(bar);
+                            // slogan
+                            const slogan = document.createElement('div');
+                            slogan.className = 'cv-search-slogan cv-editable';
+                            slogan.contentEditable = 'true';
+                            slogan.dataset.placeholder = '输入slogan';
+                            slogan.dataset.elId = el.id;
+                            slogan.dataset.sectionId = section.id;
+                            slogan.textContent = el.slogan || '';
+                            slogan.addEventListener('input', () => {
+                                const s = sections.find(ss => ss.id === section.id);
+                                if (!s) return;
+                                const e2 = s.elements.find(ee => ee.id === el.id);
+                                if (e2) e2.slogan = slogan.textContent;
+                            });
+                            slogan.addEventListener('focus', () => { selectElement(el.id); setActiveSection(section.id); });
+                            slogan.addEventListener('paste', handleTextPaste);
+                            wrap.appendChild(slogan);
+                            elWrap.appendChild(wrap);
+                            break;
+                        }
+                    }
+
+                    elWrap.addEventListener('click', (e) => {
+                        selectElement(el.id);
+                        setActiveSection(section.id);
+                    });
+
+                    sectionEl.appendChild(elWrap);
+                });
+
+                // 段落内添加元素按钮
+                const addElBtn = document.createElement('div');
+                addElBtn.className = 'add-element-btn';
+                addElBtn.innerHTML = `<button>+ 添加内容</button>`;
+                addElBtn.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showAddElementMenu(e.currentTarget, section.id);
+                });
+                sectionEl.appendChild(addElBtn);
+
+                sectionEl.addEventListener('click', (e) => {
+                    if (e.target === sectionEl) {
+                        setActiveSection(section.id);
+                    }
+                });
+
+                container.appendChild(sectionEl);
+            });
+
+            renderGlobalPanel();
+            renderLocalPanel();
+        }
+
+        // ===== 文本渲染 =====
+        function renderTextContent(content) {
+            if (!content) return '';
+            let html = escapeHtml(content);
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/\[([^\]]+)\]/g, '<span class="cv-highlight">$1</span>');
+            return html;
+        }
+
+        function syncText(sectionId, elId, domEl) {
+            const section = sections.find(s => s.id === sectionId);
+            if (!section) return;
+            const el = section.elements.find(e => e.id === elId);
+            if (!el) return;
+            el.richHtml = domEl.innerHTML;
+            let text = '';
+            function walk(node) {
+                if (node.nodeType === Node.TEXT_NODE) text += node.textContent;
+                else if (node.nodeName === 'BR') text += '\n';
+                else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
+                    if (text.length > 0 && !text.endsWith('\n')) text += '\n';
+                    node.childNodes.forEach(walk);
+                } else { node.childNodes.forEach(walk); }
+            }
+            domEl.childNodes.forEach(walk);
+            el.content = text;
+            renderGlobalPanel();
+        }
+
+        function handleTextPaste(e) {
+            // 检查是否有图片
+            const items = e.clipboardData && e.clipboardData.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.startsWith('image/')) {
+                        // 有图片，不阻止，让全局paste处理
+                        return;
+                    }
+                }
+            }
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+        }
+
+        // ===== 选中 =====
+        function selectElement(id) {
+            selectedElId = id;
+            document.querySelectorAll('.cv-element').forEach(el => {
+                el.classList.toggle('selected', parseInt(el.dataset.elId) === id);
+            });
+            renderLocalPanel();
+        }
+
+        function setActiveSection(id) {
+            activeSectionId = id;
+            document.querySelectorAll('.cv-section').forEach(el => {
+                el.classList.toggle('active', parseInt(el.dataset.sectionId) === id);
+            });
+            renderGlobalPanel();
+        }
+
+        // ===== 段落操作 =====
+        function handleSectionAction(sectionId, action) {
+            const idx = sections.findIndex(s => s.id === sectionId);
+            if (action === 'section-up' && idx > 0) {
+                [sections[idx], sections[idx - 1]] = [sections[idx - 1], sections[idx]];
+            } else if (action === 'section-down' && idx < sections.length - 1) {
+                [sections[idx], sections[idx + 1]] = [sections[idx + 1], sections[idx]];
+            } else if (action === 'section-delete') {
+                sections.splice(idx, 1);
+                if (activeSectionId === sectionId) { activeSectionId = null; selectedElId = null; }
+            }
+            render();
+        }
+
+        function addSection(insertIdx, firstElementType) {
+            const newEl = { id: ++elementIdCounter, type: firstElementType || 'h1', content: '' };
+            if (firstElementType === 'image') newEl.imageData = null;
+            if (firstElementType === 'subtitle') newEl.content = '输入模块标题';
+            if (firstElementType === 'search') { newEl.content = '脑洞秀'; newEl.slogan = '一句话和好友共演脑洞大片'; newEl.searchColor = '#0099FF'; }
+            const newSection = { id: ++sectionIdCounter, elements: [newEl] };
+            if (insertIdx === undefined || insertIdx >= sections.length) {
+                sections.push(newSection);
+            } else {
+                sections.splice(insertIdx, 0, newSection);
+            }
+            activeSectionId = newSection.id;
+            selectedElId = newEl.id;
+            render();
+            setTimeout(() => {
+                const el = document.querySelector(`.cv-element[data-el-id="${newEl.id}"] .cv-editable`);
+                if (el) el.focus();
+            }, 50);
+        }
+
+        // ===== 元素操作 =====
+        function addElementToSection(sectionId, type) {
+            const section = sections.find(s => s.id === sectionId);
+            if (!section) return;
+            const newEl = { id: ++elementIdCounter, type, content: '' };
+            if (type === 'image') newEl.imageData = null;
+            if (type === 'subtitle') newEl.content = '输入模块标题';
+            if (type === 'search') { newEl.content = '脑洞秀'; newEl.slogan = '一句话和好友共演脑洞大片'; newEl.searchColor = '#0099FF'; }
+            section.elements.push(newEl);
+            selectedElId = newEl.id;
+            render();
+            setTimeout(() => {
+                const el = document.querySelector(`.cv-element[data-el-id="${newEl.id}"] .cv-editable`);
+                if (el) el.focus();
+            }, 50);
+        }
+
+        function removeElement(sectionId, elId) {
+            const section = sections.find(s => s.id === sectionId);
+            if (!section) return;
+            section.elements = section.elements.filter(e => e.id !== elId);
+            if (section.elements.length === 0) {
+                sections = sections.filter(s => s.id !== sectionId);
+            }
+            if (selectedElId === elId) selectedElId = null;
+            render();
+        }
+
+        // ===== 段落之间添加按钮 =====
+        function createAddSectionBetween(insertIdx) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'add-section-between';
+            const line = document.createElement('div');
+            line.className = 'add-line';
+            wrapper.appendChild(line);
+            const trigger = document.createElement('button');
+            trigger.className = 'add-trigger';
+            trigger.textContent = '+';
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showAddSectionMenu(e.currentTarget, insertIdx);
+            });
+            wrapper.appendChild(trigger);
+            return wrapper;
+        }
+
+        function showAddSectionMenu(anchorEl, insertIdx) {
+            closeAllMenus();
+            const menu = document.createElement('div');
+            menu.className = 'add-menu show';
+            menu.innerHTML = `
+                <div class="add-menu-item" data-type="subtitle">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">标题文字</text><line x1="4" y1="20" x2="16" y2="20" stroke="#0099FF" stroke-width="1.5"/><path d="M22 17L24 22L26 17" stroke="#0099FF" stroke-width="1.2" fill="none"/><line x1="32" y1="20" x2="44" y2="20" stroke="#0099FF" stroke-width="1.5"/></svg></div>
+                    <span class="add-menu-label">模块标题</span>
+                </div>
+                <div class="add-menu-item" data-type="h1">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">大字正文</text></svg></div>
+                    <span class="add-menu-label">正文大字</span>
+                </div>
+                <div class="add-menu-item" data-type="body">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="6" width="32" height="2" rx="1" fill="#999"/><rect x="10" y="12" width="28" height="2" rx="1" fill="#bbb"/><rect x="12" y="18" width="24" height="2" rx="1" fill="#ccc"/></svg></div>
+                    <span class="add-menu-label">正文标准</span>
+                </div>
+                <div class="add-menu-item" data-type="note">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="10" y="8" width="28" height="1.5" rx="0.75" fill="#bbb"/><rect x="14" y="14" width="20" height="1.5" rx="0.75" fill="#ccc"/><rect x="12" y="20" width="24" height="1.5" rx="0.75" fill="#ddd"/></svg></div>
+                    <span class="add-menu-label">注释</span>
+                </div>
+                <div class="add-menu-item" data-type="image">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="4" width="32" height="20" rx="3" stroke="#ccc" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/><circle cx="18" cy="12" r="3" fill="#ddd"/><path d="M12 22L20 14L28 20L34 16L38 22" stroke="#ccc" stroke-width="1.2" fill="none"/></svg></div>
+                    <span class="add-menu-label">图片模块</span>
+                </div>
+                <div class="add-menu-item" data-type="search">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="6" y="6" width="36" height="12" rx="6" fill="#0099FF"/><rect x="16" y="8" width="24" height="8" rx="4" fill="#fff"/><circle cx="36" cy="12" r="2.5" stroke="#999" stroke-width="1" fill="none"/><line x1="37.5" y1="14" x2="39" y2="15.5" stroke="#999" stroke-width="1"/><text x="24" y="26" text-anchor="middle" font-size="5" fill="#999">slogan</text></svg></div>
+                    <span class="add-menu-label">搜索引导</span>
+                </div>
+            `;
+            menu.querySelectorAll('.add-menu-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    addSection(insertIdx, btn.dataset.type);
+                    menu.remove();
+                });
+            });
+            anchorEl.parentElement.appendChild(menu);
+            menu.style.position = 'absolute';
+            menu.style.top = '50%';
+            menu.style.left = '50%';
+            menu.style.transform = 'translate(-50%, -50%)';
+            setTimeout(() => {
+                document.addEventListener('click', function closer() {
+                    menu.remove();
+                    document.removeEventListener('click', closer);
+                }, { once: true });
+            }, 0);
+        }
+
+        function showAddElementMenu(anchorEl, sectionId) {
+            closeAllMenus();
+            const menu = document.createElement('div');
+            menu.className = 'add-menu show';
+            menu.innerHTML = `
+                <div class="add-menu-item" data-type="subtitle">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">标题文字</text><line x1="4" y1="20" x2="16" y2="20" stroke="#0099FF" stroke-width="1.5"/><path d="M22 17L24 22L26 17" stroke="#0099FF" stroke-width="1.2" fill="none"/><line x1="32" y1="20" x2="44" y2="20" stroke="#0099FF" stroke-width="1.5"/></svg></div>
+                    <span class="add-menu-label">模块标题</span>
+                </div>
+                <div class="add-menu-item" data-type="h1">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><text x="24" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">大字正文</text></svg></div>
+                    <span class="add-menu-label">正文大字</span>
+                </div>
+                <div class="add-menu-item" data-type="body">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="6" width="32" height="2" rx="1" fill="#999"/><rect x="10" y="12" width="28" height="2" rx="1" fill="#bbb"/><rect x="12" y="18" width="24" height="2" rx="1" fill="#ccc"/></svg></div>
+                    <span class="add-menu-label">正文标准</span>
+                </div>
+                <div class="add-menu-item" data-type="note">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="10" y="8" width="28" height="1.5" rx="0.75" fill="#bbb"/><rect x="14" y="14" width="20" height="1.5" rx="0.75" fill="#ccc"/><rect x="12" y="20" width="24" height="1.5" rx="0.75" fill="#ddd"/></svg></div>
+                    <span class="add-menu-label">注释</span>
+                </div>
+                <div class="add-menu-item" data-type="image">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="8" y="4" width="32" height="20" rx="3" stroke="#ccc" stroke-width="1.5" stroke-dasharray="3 2" fill="none"/><circle cx="18" cy="12" r="3" fill="#ddd"/><path d="M12 22L20 14L28 20L34 16L38 22" stroke="#ccc" stroke-width="1.2" fill="none"/></svg></div>
+                    <span class="add-menu-label">图片模块</span>
+                </div>
+                <div class="add-menu-item" data-type="search">
+                    <div class="add-menu-thumb"><svg width="48" height="28" viewBox="0 0 48 28" fill="none"><rect x="6" y="6" width="36" height="12" rx="6" fill="#0099FF"/><rect x="16" y="8" width="24" height="8" rx="4" fill="#fff"/><circle cx="36" cy="12" r="2.5" stroke="#999" stroke-width="1" fill="none"/><line x1="37.5" y1="14" x2="39" y2="15.5" stroke="#999" stroke-width="1"/><text x="24" y="26" text-anchor="middle" font-size="5" fill="#999">slogan</text></svg></div>
+                    <span class="add-menu-label">搜索引导</span>
+                </div>
+            `;
+            menu.querySelectorAll('.add-menu-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    addElementToSection(sectionId, btn.dataset.type);
+                    menu.remove();
+                });
+            });
+            const rect = anchorEl.getBoundingClientRect();
+            const parentRect = anchorEl.closest('.cv-section').getBoundingClientRect();
+            menu.style.position = 'absolute';
+            menu.style.bottom = '30px';
+            menu.style.left = '50%';
+            menu.style.transform = 'translateX(-50%)';
+            anchorEl.parentElement.style.position = 'relative';
+            anchorEl.parentElement.appendChild(menu);
+            setTimeout(() => {
+                document.addEventListener('click', function closer() {
+                    menu.remove();
+                    document.removeEventListener('click', closer);
+                }, { once: true });
+            }, 0);
+        }
+
+        function closeAllMenus() {
+            document.querySelectorAll('.add-menu.show').forEach(m => m.remove());
+        }
+
+        // ===== 图片上传 =====
+        function triggerImageUpload(sectionId, elId) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length) loadImageFile(sectionId, elId, e.target.files[0]);
+            });
+            input.click();
+        }
+
+        function loadImageFile(sectionId, elId, file) {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                for (const s of sections) {
+                    const el = s.elements.find(el => el.id === elId);
+                    if (el) { el.imageData = e.target.result; break; }
+                }
+                render();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ===== 全局 Ctrl+V 粘贴图片 =====
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = items[i].getAsFile();
+                    if (!file) return;
+                    // 查找选中的图片元素
+                    if (selectedElId) {
+                        for (const s of sections) {
+                            const el = s.elements.find(e => e.id === selectedElId);
+                            if (el && el.type === 'image') {
+                                loadImageFile(s.id, selectedElId, file);
+                                showToast('图片已粘贴');
+                                return;
+                            }
+                        }
+                    }
+                    // 否则在最后一个段落追加图片，或新建段落
+                    if (sections.length > 0 && activeSectionId) {
+                        const section = sections.find(s => s.id === activeSectionId);
+                        if (section) {
+                            const newEl = { id: ++elementIdCounter, type: 'image', content: '', imageData: null };
+                            section.elements.push(newEl);
+                            selectedElId = newEl.id;
+                            const reader2 = new FileReader();
+                            reader2.onload = (ev) => { newEl.imageData = ev.target.result; render(); };
+                            reader2.readAsDataURL(file);
+                            showToast('图片已粘贴');
+                            return;
+                        }
+                    }
+                    // 新建段落
+                    const newEl = { id: ++elementIdCounter, type: 'image', content: '', imageData: null };
+                    const newSection = { id: ++sectionIdCounter, elements: [newEl] };
+                    sections.push(newSection);
+                    selectedElId = newEl.id;
+                    activeSectionId = newSection.id;
+                    const reader3 = new FileReader();
+                    reader3.onload = (ev) => { newEl.imageData = ev.target.result; render(); };
+                    reader3.readAsDataURL(file);
+                    showToast('图片已粘贴');
+                    return;
+                }
+            }
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById('pasteToast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // ===== 拖拽图片 =====
+        document.getElementById('canvas').addEventListener('dragover', (e) => e.preventDefault());
+        document.getElementById('canvas').addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (!files.length) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) return;
+            if (selectedElId) {
+                for (const s of sections) {
+                    const el = s.elements.find(e => e.id === selectedElId);
+                    if (el && el.type === 'image') {
+                        loadImageFile(s.id, selectedElId, file);
+                        return;
+                    }
+                }
+            }
+            const newEl = { id: ++elementIdCounter, type: 'image', content: '', imageData: null };
+            const newSection = { id: ++sectionIdCounter, elements: [newEl] };
+            sections.push(newSection);
+            selectedElId = newEl.id;
+            activeSectionId = newSection.id;
+            const reader = new FileReader();
+            reader.onload = (ev) => { newEl.imageData = ev.target.result; render(); };
+            reader.readAsDataURL(file);
+        });
+
+        // ===== 底部添加 =====
+        const bottomBtn = document.getElementById('addBottomBtn');
+        const bottomMenu = document.getElementById('bottomAddMenu');
+        bottomBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = bottomBtn.getBoundingClientRect();
+            bottomMenu.style.top = (rect.top - 8) + 'px';
+            bottomMenu.style.left = (rect.left + rect.width / 2) + 'px';
+            bottomMenu.style.transform = 'translate(-50%, -100%)';
+            bottomMenu.classList.toggle('show');
+        });
+        bottomMenu.querySelectorAll('.add-menu-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addSection(undefined, btn.dataset.type);
+                bottomMenu.classList.remove('show');
+            });
+        });
+        document.addEventListener('click', () => bottomMenu.classList.remove('show'));
+
+        // ===== 缩放 =====
+        document.getElementById('scaleRange').addEventListener('input', (e) => {
+            const scale = e.target.value / 100;
+            document.getElementById('scaleValue').textContent = e.target.value + '%';
+            document.getElementById('canvasWrapper').style.transform = `scale(${scale})`;
+        });
+
+        // ===== 分辨率切换 =====
+        document.querySelectorAll('.res-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.res-toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                exportScale = parseInt(btn.dataset.scale);
+            });
+        });
+
+        // ===== 导出 =====
+        document.getElementById('exportBtn').addEventListener('click', async () => {
+            const overlay = document.getElementById('exportOverlay');
+            overlay.classList.add('show');
+            try {
+                const prevSelected = selectedElId;
+                const prevActive = activeSectionId;
+                selectedElId = null; activeSectionId = null;
+                document.querySelectorAll('.cv-element.selected').forEach(el => el.classList.remove('selected'));
+                document.querySelectorAll('.cv-section.active').forEach(el => el.classList.remove('active'));
+
+                // 隐藏编辑UI（用visibility保持布局一致）
+                const editEls = document.querySelectorAll('.cv-section-marker, .cv-section-label, .cv-section-drag-handle, .add-element-btn, .canvas-add-bottom, .cv-image-resize-slider');
+                editEls.forEach(el => el.style.display = 'none');
+                // add-section-between 用visibility隐藏以保留间距
+                const betweenEls = document.querySelectorAll('.add-section-between');
+                betweenEls.forEach(el => el.style.visibility = 'hidden');
+                // 隐藏被标记hidden的元素和段落（保留占位空间）
+                document.querySelectorAll('.cv-element.el-hidden').forEach(el => el.style.visibility = 'hidden');
+                document.querySelectorAll('.cv-section.section-hidden').forEach(el => el.style.visibility = 'hidden');
+
+                const wrapper = document.getElementById('canvasWrapper');
+                const oldTransform = wrapper.style.transform;
+                wrapper.style.transform = 'scale(1)';
+
+                const isGradient = currentBgColor.startsWith('linear-gradient');
+                const canvas = await html2canvas(document.getElementById('canvas'), {
+                    backgroundColor: isGradient ? null : currentBgColor,
+                    scale: exportScale,
+                    useCORS: true, allowTaint: true,
+                });
+
+                wrapper.style.transform = oldTransform;
+                editEls.forEach(el => el.style.display = '');
+                betweenEls.forEach(el => el.style.visibility = '');
+                document.querySelectorAll('.cv-element.el-hidden').forEach(el => el.style.visibility = '');
+                document.querySelectorAll('.cv-section.section-hidden').forEach(el => el.style.visibility = '');
+                selectedElId = prevSelected;
+                activeSectionId = prevActive;
+                if (prevSelected) {
+                    const el = document.querySelector(`.cv-element[data-el-id="${prevSelected}"]`);
+                    if (el) el.classList.add('selected');
+                }
+                if (prevActive) {
+                    const el = document.querySelector(`.cv-section[data-section-id="${prevActive}"]`);
+                    if (el) el.classList.add('active');
+                }
+
+                const link = document.createElement('a');
+                // 自动提取第一行文案作为文件名
+                let firstText = '';
+                for (const s of sections) {
+                    for (const el of s.elements) {
+                        if ((el.type === 'h1' || el.type === 'subtitle' || el.type === 'body' || el.type === 'note') && el.content && el.content.trim()) {
+                            firstText = el.content.trim().replace(/\n.*/g, '').slice(0, 20);
+                            break;
+                        }
+                    }
+                    if (firstText) break;
+                }
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const fileName = (firstText || '宣发长图') + '_' + dateStr + '.png';
+                link.download = fileName;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert('导出失败：' + err.message);
+            } finally {
+                overlay.classList.remove('show');
+            }
+        });
+
+        // ===== 模板管理 =====
+        document.getElementById('templateBtn').addEventListener('click', () => {
+            renderTemplateModal();
+            document.getElementById('templateModal').classList.add('show');
+        });
+        document.getElementById('closeTemplateModal').addEventListener('click', () => {
+            document.getElementById('templateModal').classList.remove('show');
+        });
+        document.getElementById('templateModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('templateModal'))
+                document.getElementById('templateModal').classList.remove('show');
+        });
+        document.getElementById('saveTemplateBtn').addEventListener('click', () => {
+            const name = prompt('请输入模板名称：', `模板${templates.length + 1}`);
+            if (!name) return;
+            // 保存到localStorage
+            templates.push({
+                name,
+                sections: JSON.parse(JSON.stringify(sections)),
+                bgColor: currentBgColor,
+                createdAt: new Date().toISOString()
+            });
+            localStorage.setItem('longimg_templates', JSON.stringify(templates));
+            // 同时下载为可二次编辑的HTML文件
+            generateTemplateHtml(name);
+            showToast('模板已保存并下载');
+        });
+
+        function generateTemplateHtml(templateName) {
+            // 读取当前页面的完整HTML源码
+            const currentDoc = document.documentElement.outerHTML;
+            // 构建注入脚本：在页面加载后恢复数据
+            const savedSections = JSON.stringify(sections);
+            const savedBgColor = JSON.stringify(currentBgColor);
+            const restoreScript = `
+<script>
+(function(){
+    // 等待原始脚本执行完毕后注入数据
+    setTimeout(function(){
+        try {
+            // 通过自定义事件或直接操作恢复数据
+            window.__TEMPLATE_DATA__ = ${savedSections};
+            window.__TEMPLATE_BG__ = ${savedBgColor};
+        } catch(e) { console.error('模板数据加载失败', e); }
+    }, 0);
+})();
+<\/script>`;
+
+            // 在IIFE启动部分注入模板数据加载逻辑
+            // 生成一个完整的HTML副本，修改initDefault为加载模板数据
+            let html = '<!DOCTYPE html>\n<html ' + document.documentElement.attributes[0].name + '="' + document.documentElement.attributes[0].value + '">';
+            html += '\n<head>' + document.head.innerHTML + '</head>';
+            html += '\n<body>' + document.body.innerHTML;
+            // 插入恢复脚本
+            html += restoreScript;
+            html += '\n</body></html>';
+
+            // 不行，这样太复杂。直接用fetch获取原始index.html也不行。
+            // 最简单方案：生成一个独立HTML，嵌入数据，加载时自动恢复
+            // 使用当前页面的原始源码，替换initDefault调用为加载模板数据
+
+            // 更好的方案：直接用当前完整HTML，在script末尾注入模板恢复
+            const blob = buildTemplateBlob(templateName);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (templateName || '模板') + '.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function buildTemplateBlob(templateName) {
+            // 克隆当前页面HTML
+            const clone = document.documentElement.cloneNode(true);
+            // 移除动态内容(canvasInner, panels等)
+            const ci = clone.querySelector('#canvasInner');
+            if (ci) ci.innerHTML = '';
+            const gpl = clone.querySelector('#globalPanelList');
+            if (gpl) gpl.innerHTML = '';
+            const lpe = clone.querySelector('#localPanelEmpty');
+            if (lpe) lpe.style.display = 'flex';
+            const lpc = clone.querySelector('#localPanelContent');
+            if (lpc) { lpc.style.display = 'none'; lpc.innerHTML = ''; }
+            // 移除弹出菜单状态
+            clone.querySelectorAll('.add-menu.show').forEach(m => m.classList.remove('show'));
+            clone.querySelectorAll('.export-overlay.show').forEach(m => m.classList.remove('show'));
+            clone.querySelectorAll('.template-modal-overlay.show').forEach(m => m.classList.remove('show'));
+
+            // 找到script标签，在initDefault()调用前注入数据加载
+            const scripts = clone.querySelectorAll('script');
+            let mainScript = null;
+            scripts.forEach(s => {
+                if (s.textContent.includes('initDefault')) mainScript = s;
+            });
+
+            if (mainScript) {
+                let code = mainScript.textContent;
+                // 替换启动部分，注入模板数据
+                const sectionsJson = JSON.stringify(sections);
+                const loadCode = `
+        // ===== 模板数据加载 =====
+        (function loadTemplateData() {
+            try {
+                sections = ${sectionsJson};
+                currentBgColor = ${JSON.stringify(currentBgColor)};
+                sectionIdCounter = 0; elementIdCounter = 0;
+                sections.forEach(function(s) {
+                    if (s.id > sectionIdCounter) sectionIdCounter = s.id;
+                    s.elements.forEach(function(e) { if (e.id > elementIdCounter) elementIdCounter = e.id; });
+                });
+                applyBgColor(currentBgColor);
+            } catch(e) { console.error('模板数据加载失败', e); }
+        })();
+`;
+                code = code.replace(
+                    '// ===== 启动 =====\n        renderBgColorGrid();\n        initDefault();',
+                    '// ===== 启动 =====\n' + loadCode + '        renderBgColorGrid();\n        render();'
+                );
+                mainScript.textContent = code;
+            }
+
+            const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+            return new Blob([html], { type: 'text/html;charset=utf-8' });
+        }
+        function renderTemplateModal() {
+            const list = document.getElementById('templateList');
+            if (templates.length === 0) {
+                list.innerHTML = '<div class="template-modal-empty">暂无保存的模板</div>';
+                return;
+            }
+            list.innerHTML = templates.map((t, i) => `
+                <div class="template-modal-item" data-idx="${i}">
+                    <span class="tpl-name">${t.name}</span>
+                    <span class="tpl-del" data-delidx="${i}" title="删除">✕</span>
+                </div>
+            `).join('');
+            list.querySelectorAll('.template-modal-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('tpl-del')) {
+                        const idx = parseInt(e.target.dataset.delidx);
+                        templates.splice(idx, 1);
+                        localStorage.setItem('longimg_templates', JSON.stringify(templates));
+                        renderTemplateModal();
+                        return;
+                    }
+                    const idx = parseInt(item.dataset.idx);
+                    const tpl = templates[idx];
+                    // 兼容旧版 blocks 格式
+                    if (tpl.sections) {
+                        sections = JSON.parse(JSON.stringify(tpl.sections));
+                        sectionIdCounter = 0; elementIdCounter = 0;
+                        sections.forEach(s => {
+                            if (s.id > sectionIdCounter) sectionIdCounter = s.id;
+                            s.elements.forEach(e => { if (e.id > elementIdCounter) elementIdCounter = e.id; });
+                        });
+                        if (tpl.bgColor) {
+                            currentBgColor = tpl.bgColor;
+                            applyBgColor(currentBgColor);
+                            renderBgColorGrid();
+                        }
+                    }
+                    render();
+                    document.getElementById('templateModal').classList.remove('show');
+                });
+            });
+        }
+
+        // ===== 工具函数 =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ===== 键盘 =====
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            // 如果焦点在可编辑文本框内，不拦截任何键盘操作（支持Cmd+A全选、Delete删除等）
+            if (activeEl && (activeEl.classList.contains('cv-editable') || activeEl.isContentEditable || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                return;
+            }
+            // 非编辑状态下，Delete/Backspace 删除选中的区块
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElId) {
+                e.preventDefault();
+                for (const s of sections) {
+                    const el = s.elements.find(el => el.id === selectedElId);
+                    if (el) { removeElement(s.id, el.id); break; }
+                }
+            }
+        });
+
+        // 点击空白取消选中
+        document.getElementById('canvasInner').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('canvasInner')) {
+                selectedElId = null; activeSectionId = null;
+                document.querySelectorAll('.cv-element.selected').forEach(el => el.classList.remove('selected'));
+                document.querySelectorAll('.cv-section.active').forEach(el => el.classList.remove('active'));
+                renderGlobalPanel(); renderLocalPanel();
+            }
+        });
+
+        // ===== 文本格式浮层 =====
+        const fmtToolbar = document.getElementById('textFormatToolbar');
+
+        function showFormatToolbar() {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) { hideFormatToolbar(); return; }
+            const anchorNode = sel.anchorNode;
+            const editableParent = anchorNode && (anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode).closest('.cv-editable');
+            if (!editableParent) { hideFormatToolbar(); return; }
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            if (rect.width === 0) { hideFormatToolbar(); return; }
+            fmtToolbar.classList.add('show');
+            const tbRect = fmtToolbar.getBoundingClientRect();
+            let left = rect.left + rect.width / 2 - tbRect.width / 2;
+            let top = rect.top - tbRect.height - 10;
+            if (left < 8) left = 8;
+            if (left + tbRect.width > window.innerWidth - 8) left = window.innerWidth - 8 - tbRect.width;
+            if (top < 8) top = rect.bottom + 10;
+            fmtToolbar.style.left = left + 'px';
+            fmtToolbar.style.top = top + 'px';
+            updateFormatStates();
+        }
+
+        function hideFormatToolbar() { fmtToolbar.classList.remove('show'); }
+
+        function updateFormatStates() {
+            const isBold = document.queryCommandState('bold');
+            document.getElementById('fmtBold').classList.toggle('active', isBold);
+            const color = document.queryCommandValue('foreColor');
+            fmtToolbar.querySelectorAll('.fmt-color-dot').forEach(dot => dot.classList.remove('active'));
+            if (color) {
+                const hex = rgbToHex(color).toUpperCase();
+                const activeDot = fmtToolbar.querySelector(`.fmt-color-dot[data-color="${hex}"]`);
+                if (activeDot) activeDot.classList.add('active');
+            }
+        }
+
+        function rgbToHex(rgb) {
+            if (rgb.startsWith('#')) return rgb;
+            const match = rgb.match(/\d+/g);
+            if (!match || match.length < 3) return rgb;
+            return '#' + match.slice(0, 3).map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+        }
+
+        document.getElementById('fmtBold').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            updateFormatStates();
+        });
+
+        fmtToolbar.querySelectorAll('.fmt-color-dot').forEach(dot => {
+            dot.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const color = dot.dataset.color;
+                if (color === 'inherit') {
+                    document.execCommand('removeFormat', false, null);
+                } else {
+                    document.execCommand('foreColor', false, color);
+                }
+                updateFormatStates();
+                fmtToolbar.querySelectorAll('.fmt-color-dot').forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+            });
+        });
+
+        document.addEventListener('selectionchange', () => {
+            requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed) { hideFormatToolbar(); return; }
+                const anchorNode = sel.anchorNode;
+                const editableParent = anchorNode && (anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode).closest('.cv-editable');
+                if (editableParent) showFormatToolbar();
+                else hideFormatToolbar();
+            });
+        });
+
+        fmtToolbar.addEventListener('mousedown', (e) => e.stopPropagation());
+
+        // ===== 启动 =====
+        renderBgColorGrid();
+        initDefault();
+    })();
+    </script>
+</body>
+</html>
