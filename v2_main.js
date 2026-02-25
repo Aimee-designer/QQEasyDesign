@@ -316,6 +316,29 @@ window.APP = (function() {
     ];
     const STICKER_BASE = 'stickers/main/';
 
+    // ===== 将图片URL转为base64 DataURL（解决导出时跨域污染问题）=====
+    function fetchAsDataURL(url) {
+        return fetch(url)
+            .then(res => res.blob())
+            .then(blob => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }));
+    }
+
+    // 预加载所有表情包为base64缓存
+    const stickerDataURLCache = {};
+    function preloadStickersAsDataURL() {
+        STICKER_LIST.forEach(s => {
+            fetchAsDataURL(STICKER_BASE + s.file).then(dataUrl => {
+                stickerDataURLCache[s.file] = dataUrl;
+            }).catch(() => {});
+        });
+    }
+    preloadStickersAsDataURL();
+
     // ===== IndexedDB 辅助：存储模板中的大体积媒体数据 =====
     const DB_NAME = 'longimg_tpl_media';
     const DB_VERSION = 1;
@@ -610,7 +633,19 @@ window.APP = (function() {
             item.addEventListener('click', () => {
                 selectedEl.stickerFile = item.dataset.stickerFile;
                 selectedEl.stickerName = item.dataset.stickerName;
-                render();
+                // 优先使用缓存的base64，否则现场转换
+                const cached = stickerDataURLCache[selectedEl.stickerFile];
+                if (cached) {
+                    selectedEl.stickerDataURL = cached;
+                    render();
+                } else {
+                    fetchAsDataURL(STICKER_BASE + selectedEl.stickerFile).then(dataUrl => {
+                        selectedEl.stickerDataURL = dataUrl;
+                        stickerDataURLCache[selectedEl.stickerFile] = dataUrl;
+                    }).catch(() => {}).finally(() => {
+                        render();
+                    });
+                }
             });
         });
         const stickerSizeSlider = content.querySelector('.lp-sticker-size-range');
@@ -1089,7 +1124,7 @@ window.APP = (function() {
                         stickerWrap.style.textAlign = 'center';
                         if (el.stickerFile) {
                             const img = document.createElement('img');
-                            img.src = STICKER_BASE + el.stickerFile;
+                            img.src = el.stickerDataURL || stickerDataURLCache[el.stickerFile] || (STICKER_BASE + el.stickerFile);
                             img.className = 'cv-sticker-img';
                             img.alt = el.stickerName || '';
                             img.draggable = false;
