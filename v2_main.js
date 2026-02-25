@@ -279,7 +279,12 @@ window.APP = (function() {
                 };
                 userPresetTemplates.push(presetData);
                 await saveUserPresetsIndex();
-                showToast('模板「' + name + '」导入成功');
+                // 导入后自动打开该模板
+                loadUserPresetTemplate(presetData);
+                // 延迟提示，避免被 loadUserPresetTemplate 内部的 toast 覆盖
+                setTimeout(() => {
+                    showToast('模板「' + name + '」已导入并打开 · 可在模版列表中再次找到');
+                }, 2500);
             } catch (err) {
                 console.error('导入模板失败:', err);
                 showToast('导入失败：' + (err.message || '文件格式错误'));
