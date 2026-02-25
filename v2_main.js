@@ -277,7 +277,17 @@ window.APP = (function() {
                     sections: sectionsClone,
                     userPreset: true
                 };
-                userPresetTemplates.push(presetData);
+                // 同名去重：替换已有的同名预制模板
+                const existIdx = userPresetTemplates.findIndex(p => p.name === name);
+                if (existIdx >= 0) {
+                    // 清理旧模板媒体
+                    if (userPresetTemplates[existIdx].mediaKey) {
+                        deleteTemplateMedia(userPresetTemplates[existIdx].mediaKey).catch(() => {});
+                    }
+                    userPresetTemplates[existIdx] = presetData;
+                } else {
+                    userPresetTemplates.push(presetData);
+                }
                 await saveUserPresetsIndex();
                 // 导入后自动打开该模板
                 loadUserPresetTemplate(presetData);
@@ -2143,7 +2153,7 @@ window.APP = (function() {
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:300;display:flex;align-items:center;justify-content:center;';
         const dialog = document.createElement('div');
         dialog.style.cssText = 'background:var(--bg-secondary);border-radius:16px;padding:28px;width:360px;box-shadow:0 16px 48px rgba(0,0,0,0.5);border:1px solid var(--border);';
-        dialog.innerHTML = `<h3 style="font-size:16px;margin-bottom:16px;color:var(--text-primary);">保存模板</h3>
+        dialog.innerHTML = `<h3 style="font-size:16px;margin-bottom:16px;color:var(--text-primary);">保存为模板</h3>
             <input type="text" id="tplNameInput" value="模板${templates.length + 1}" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" placeholder="请输入模板名称" />
             <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
                 <input type="checkbox" id="tplPresetCheck" style="accent-color:var(--brand);width:16px;height:16px;cursor:pointer;" />
@@ -2280,14 +2290,14 @@ window.APP = (function() {
         if (totalPresets > 0) {
             html += '<div style="font-size:11px;color:var(--text-secondary);padding:4px 2px 6px;font-weight:600;">预制模板</div>';
             // 内置模板
-            html += BUILT_IN_TEMPLATES.map((t, i) => `<div class="template-modal-item" data-builtin="${i}"><span class="tpl-name">${t.name}</span><span style="font-size:11px;color:var(--text-secondary);padding:2px 6px;border:1px solid var(--border);border-radius:4px;">内置</span></div>`).join('');
+            html += BUILT_IN_TEMPLATES.map((t, i) => `<div class="template-modal-item" data-builtin="${i}"><div class="tpl-name-group"><span class="tpl-name">${t.name}</span><span class="tpl-badge tpl-badge-builtin">内置</span></div><div class="tpl-actions"><span class="tpl-export-btn" data-export-builtin="${i}" title="导出模板">导出</span></div></div>`).join('');
             // 用户预制模板
-            html += userPresetTemplates.map((t, i) => `<div class="template-modal-item" data-upreset="${i}"><span class="tpl-name">${t.name}</span><div style="display:flex;align-items:center;gap:4px;"><span class="tpl-export" data-export-upreset="${i}" title="导出模板" style="font-size:11px;cursor:pointer;padding:2px 6px;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);transition:all 0.2s;">导出</span><span style="font-size:11px;color:var(--brand);padding:2px 6px;border:1px solid var(--brand);border-radius:4px;opacity:0.7;">预制</span><span class="tpl-del" data-del-upreset="${i}" title="取消预制" style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px;transition:color 0.2s;">×</span></div></div>`).join('');
+            html += userPresetTemplates.map((t, i) => `<div class="template-modal-item" data-upreset="${i}"><div class="tpl-name-group"><span class="tpl-name">${t.name}</span><span class="tpl-badge tpl-badge-preset">预制</span></div><div class="tpl-actions"><span class="tpl-export-btn" data-export-upreset="${i}" title="导出模板">导出</span><span class="tpl-del" data-del-upreset="${i}" title="取消预制">×</span></div></div>`).join('');
         }
         // 用户普通模板
         if (templates.length > 0) {
             html += '<div style="font-size:11px;color:var(--text-secondary);padding:10px 2px 6px;font-weight:600;">我的模板</div>';
-            html += templates.map((t, i) => `<div class="template-modal-item" data-idx="${i}"><span class="tpl-name">${t.name}</span><div style="display:flex;align-items:center;gap:4px;"><span class="tpl-export" data-export-idx="${i}" title="导出模板" style="font-size:11px;cursor:pointer;padding:2px 6px;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);transition:all 0.2s;">导出</span><span class="tpl-pin" data-pinidx="${i}" title="固定为预制模板" style="font-size:13px;cursor:pointer;padding:2px 6px;border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);transition:all 0.2s;">📌</span><span class="tpl-del" data-delidx="${i}" title="删除" style="cursor:pointer;">删</span></div></div>`).join('');
+            html += templates.map((t, i) => `<div class="template-modal-item" data-idx="${i}"><div class="tpl-name-group"><span class="tpl-name">${t.name}</span></div><div class="tpl-actions"><span class="tpl-pin" data-pinidx="${i}" title="固定为预制模板">📌</span><span class="tpl-export-btn" data-export-idx="${i}" title="导出模板">导出</span><span class="tpl-del" data-delidx="${i}" title="删除">删除</span></div></div>`).join('');
         }
         list.innerHTML = html;
         // 内置模板点击
@@ -2440,7 +2450,19 @@ window.APP = (function() {
                 console.error('自动迁移预制模板失败:', err);
             }
         }
-        // 第2步：清理——把已存在于预制中的模板从"我的模板"中移除（避免重复显示）
+        // 第2步：清理预制模板列表内部的同名重复项（保留最新的）
+        const seenPresetNames = new Set();
+        for (let i = userPresetTemplates.length - 1; i >= 0; i--) {
+            if (seenPresetNames.has(userPresetTemplates[i].name)) {
+                if (userPresetTemplates[i].mediaKey) { deleteTemplateMedia(userPresetTemplates[i].mediaKey).catch(() => {}); }
+                userPresetTemplates.splice(i, 1);
+                changed = true;
+            } else {
+                seenPresetNames.add(userPresetTemplates[i].name);
+            }
+        }
+        if (changed) await saveUserPresetsIndex();
+        // 第3步：清理——把已存在于预制中的模板从"我的模板"中移除（避免重复显示）
         const presetNames = new Set(userPresetTemplates.map(p => p.name));
         for (let i = templates.length - 1; i >= 0; i--) {
             if (templates[i].name && presetNames.has(templates[i].name)) {
