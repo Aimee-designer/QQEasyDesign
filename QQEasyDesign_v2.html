@@ -847,6 +847,96 @@
         .doc-modal-body .doc-checklist { list-style: none; padding-left: 0; }
         .doc-modal-body .doc-checklist li::before { content: '☐ '; color: var(--text-secondary); }
 
+        /* ===== 新手引导 ===== */
+        .onboarding-overlay {
+            position: fixed; inset: 0; z-index: 100000;
+            pointer-events: none; opacity: 0;
+            transition: opacity .3s ease;
+        }
+        .onboarding-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .onboarding-mask {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            transition: clip-path .35s cubic-bezier(.4,0,.2,1);
+            cursor: pointer;
+        }
+
+        .onboarding-highlight {
+            position: fixed; z-index: 100001;
+            border-radius: 10px;
+            box-shadow: 0 0 0 4px var(--brand), 0 0 24px rgba(0,153,255,0.35);
+            pointer-events: none;
+            transition: all .35s cubic-bezier(.4,0,.2,1);
+        }
+
+        .onboarding-popover {
+            position: fixed; z-index: 100002;
+            width: 320px;
+            background: var(--bg-secondary, #161B22);
+            border: 1px solid var(--border, #30363D);
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+            padding: 20px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity .3s ease .1s, transform .3s ease .1s;
+        }
+        .onboarding-overlay.active .onboarding-popover { opacity: 1; transform: translateY(0); }
+
+        .onboarding-popover-arrow {
+            position: absolute; width: 12px; height: 12px;
+            background: var(--bg-secondary, #161B22);
+            border: 1px solid var(--border, #30363D);
+            transform: rotate(45deg);
+        }
+        .onboarding-popover-arrow.arrow-top { top: -7px; border-bottom: none; border-right: none; }
+        .onboarding-popover-arrow.arrow-bottom { bottom: -7px; border-top: none; border-left: none; }
+        .onboarding-popover-arrow.arrow-left { left: -7px; border-right: none; border-top: none; }
+
+        .onboarding-step-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px; font-weight: 600; color: var(--brand);
+            margin-bottom: 8px; letter-spacing: 0.5px;
+        }
+        .onboarding-step-badge svg { width: 14px; height: 14px; }
+
+        .onboarding-text {
+            font-size: 14px; line-height: 1.65; color: var(--text-primary);
+            margin-bottom: 18px;
+        }
+
+        .onboarding-actions {
+            display: flex; justify-content: flex-end; gap: 8px;
+        }
+        .onboarding-btn {
+            padding: 7px 18px; border-radius: 8px; font-size: 13px;
+            font-weight: 500; cursor: pointer; border: none;
+            transition: all .15s ease;
+        }
+        .onboarding-btn-skip {
+            background: transparent; color: var(--text-secondary);
+        }
+        .onboarding-btn-skip:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+        .onboarding-btn-next {
+            background: var(--brand); color: #fff;
+        }
+        .onboarding-btn-next:hover { filter: brightness(1.12); }
+        .onboarding-btn-done {
+            background: var(--brand); color: #fff;
+        }
+        .onboarding-btn-done:hover { filter: brightness(1.12); }
+
+        .onboarding-progress {
+            display: flex; gap: 5px; margin-bottom: 14px;
+        }
+        .onboarding-dot {
+            width: 22px; height: 3px; border-radius: 2px;
+            background: rgba(255,255,255,0.12);
+            transition: background .2s;
+        }
+        .onboarding-dot.active { background: var(--brand); }
+
     </style>
 </head>
 <body>
@@ -1614,6 +1704,261 @@
             if (target) target.classList.add('active');
             body.scrollTop = 0;
         });
+    })();
+    </script>
+
+    <!-- ===== 新手引导 ===== -->
+    <div class="onboarding-overlay" id="onboardingOverlay">
+        <div class="onboarding-mask" id="onboardingMask"></div>
+        <div class="onboarding-highlight" id="onboardingHighlight"></div>
+        <div class="onboarding-popover" id="onboardingPopover">
+            <div class="onboarding-popover-arrow" id="onboardingArrow"></div>
+            <div class="onboarding-progress" id="onboardingProgress"></div>
+            <div class="onboarding-step-badge" id="onboardingBadge"></div>
+            <div class="onboarding-text" id="onboardingText"></div>
+            <div class="onboarding-actions" id="onboardingActions"></div>
+        </div>
+    </div>
+
+    <script>
+    // ===== 新手引导系统 =====
+    (function() {
+        var steps = [
+            {
+                target: '#toolbarMenuTrigger',
+                text: '如果不知道怎么开始，试试查看过往预制案例吧',
+                badge: '步骤 1/2',
+                position: 'bottom' // popover 出现在目标下方
+            },
+            {
+                target: '#docEntryBtn',
+                text: '这里有详细的使用文档，更多功能正在陆续迭代中',
+                badge: '步骤 2/2',
+                position: 'right' // popover 出现在目标右侧
+            }
+        ];
+
+        var currentStep = 0;
+        var overlay = document.getElementById('onboardingOverlay');
+        var mask = document.getElementById('onboardingMask');
+        var highlight = document.getElementById('onboardingHighlight');
+        var popover = document.getElementById('onboardingPopover');
+        var arrow = document.getElementById('onboardingArrow');
+        var progressEl = document.getElementById('onboardingProgress');
+        var badgeEl = document.getElementById('onboardingBadge');
+        var textEl = document.getElementById('onboardingText');
+        var actionsEl = document.getElementById('onboardingActions');
+
+        function getTargetRect(selector) {
+            var el = document.querySelector(selector);
+            if (!el) return null;
+            return el.getBoundingClientRect();
+        }
+
+        function buildMaskClipPath(rect, padding) {
+            var p = padding || 6;
+            var r = 10; // border-radius
+            var x = rect.left - p;
+            var y = rect.top - p;
+            var w = rect.width + p * 2;
+            var h = rect.height + p * 2;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            // 用 polygon 挖洞 (外框顺时针 + 内框逆时针)
+            return 'polygon(evenodd, ' +
+                '0 0, ' + vw + 'px 0, ' + vw + 'px ' + vh + 'px, 0 ' + vh + 'px, 0 0, ' +
+                (x + r) + 'px ' + y + 'px, ' +
+                x + 'px ' + (y + r) + 'px, ' +
+                x + 'px ' + (y + h - r) + 'px, ' +
+                (x + r) + 'px ' + (y + h) + 'px, ' +
+                (x + w - r) + 'px ' + (y + h) + 'px, ' +
+                (x + w) + 'px ' + (y + h - r) + 'px, ' +
+                (x + w) + 'px ' + (y + r) + 'px, ' +
+                (x + w - r) + 'px ' + y + 'px, ' +
+                (x + r) + 'px ' + y + 'px' +
+                ')';
+        }
+
+        function positionPopover(rect, position) {
+            var pad = 14;
+            var popW = 320;
+            var popH = popover.offsetHeight || 160;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var margin = 12;
+
+            // 先重置 arrow 样式
+            arrow.className = 'onboarding-popover-arrow';
+            arrow.style.left = '';
+            arrow.style.top = '';
+            arrow.style.right = '';
+            arrow.style.bottom = '';
+
+            if (position === 'bottom') {
+                var left = rect.left + rect.width / 2 - popW / 2;
+                left = Math.max(margin, Math.min(left, vw - popW - margin));
+                var top = rect.bottom + pad;
+                // 如果下方放不下，改为上方
+                if (top + popH > vh - margin) {
+                    top = rect.top - pad - popH;
+                    arrow.classList.add('arrow-bottom');
+                    arrow.style.left = (rect.left + rect.width / 2 - left - 6) + 'px';
+                } else {
+                    arrow.classList.add('arrow-top');
+                    arrow.style.left = (rect.left + rect.width / 2 - left - 6) + 'px';
+                }
+                popover.style.left = left + 'px';
+                popover.style.top = top + 'px';
+                popover.style.right = '';
+            } else if (position === 'right') {
+                var leftPos = rect.right + pad;
+                var topPos = rect.top + rect.height / 2 - popH / 2;
+                // 如果右侧放不下，改为上方
+                if (leftPos + popW > vw - margin) {
+                    leftPos = rect.left + rect.width / 2 - popW / 2;
+                    leftPos = Math.max(margin, Math.min(leftPos, vw - popW - margin));
+                    topPos = rect.top - pad - popH;
+                    if (topPos < margin) topPos = rect.bottom + pad;
+                    arrow.classList.add('arrow-bottom');
+                    arrow.style.left = (rect.left + rect.width / 2 - leftPos - 6) + 'px';
+                } else {
+                    // 确保垂直不超出视口
+                    topPos = Math.max(margin, Math.min(topPos, vh - popH - margin));
+                    arrow.classList.add('arrow-left');
+                    arrow.style.top = (rect.top + rect.height / 2 - topPos - 6) + 'px';
+                }
+                popover.style.left = leftPos + 'px';
+                popover.style.top = topPos + 'px';
+                popover.style.right = '';
+            }
+        }
+
+        function positionHighlight(rect) {
+            var p = 6;
+            highlight.style.left = (rect.left - p) + 'px';
+            highlight.style.top = (rect.top - p) + 'px';
+            highlight.style.width = (rect.width + p * 2) + 'px';
+            highlight.style.height = (rect.height + p * 2) + 'px';
+        }
+
+        function renderProgress() {
+            var html = '';
+            for (var i = 0; i < steps.length; i++) {
+                html += '<div class="onboarding-dot' + (i <= currentStep ? ' active' : '') + '"></div>';
+            }
+            progressEl.innerHTML = html;
+        }
+
+        function renderStep() {
+            var step = steps[currentStep];
+            var rect = getTargetRect(step.target);
+            if (!rect) { finish(); return; }
+
+            // 遮罩挖洞
+            mask.style.clipPath = buildMaskClipPath(rect);
+            mask.style.webkitClipPath = buildMaskClipPath(rect);
+
+            // 高亮框
+            positionHighlight(rect);
+
+            // 进度条
+            renderProgress();
+
+            // 徽标
+            badgeEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' + step.badge;
+
+            // 文案
+            textEl.textContent = step.text;
+
+            // 按钮
+            var isLast = currentStep === steps.length - 1;
+            actionsEl.innerHTML = '';
+
+            var skipBtn = document.createElement('button');
+            skipBtn.className = 'onboarding-btn onboarding-btn-skip';
+            skipBtn.textContent = '跳过';
+            skipBtn.addEventListener('click', finish);
+            actionsEl.appendChild(skipBtn);
+
+            if (isLast) {
+                var doneBtn = document.createElement('button');
+                doneBtn.className = 'onboarding-btn onboarding-btn-done';
+                doneBtn.textContent = '知道了';
+                doneBtn.addEventListener('click', finish);
+                actionsEl.appendChild(doneBtn);
+            } else {
+                var nextBtn = document.createElement('button');
+                nextBtn.className = 'onboarding-btn onboarding-btn-next';
+                nextBtn.textContent = '下一步';
+                nextBtn.addEventListener('click', nextStep);
+                actionsEl.appendChild(nextBtn);
+            }
+
+            // 定位 popover（需要先渲染后获取高度，再修正位置）
+            requestAnimationFrame(function() {
+                positionPopover(rect, step.position);
+            });
+        }
+
+        function nextStep() {
+            currentStep++;
+            if (currentStep >= steps.length) {
+                finish();
+            } else {
+                // 先让 popover 淡出再切换
+                popover.style.opacity = '0';
+                popover.style.transform = 'translateY(10px)';
+                setTimeout(function() {
+                    renderStep();
+                    // 强制重绘
+                    void popover.offsetWidth;
+                    popover.style.opacity = '1';
+                    popover.style.transform = 'translateY(0)';
+                }, 200);
+            }
+        }
+
+        function finish() {
+            overlay.classList.remove('active');
+            setTimeout(function() {
+                overlay.style.display = 'none';
+            }, 350);
+        }
+
+        function start() {
+            overlay.style.display = '';
+            // 小延迟保证 DOM 就绪
+            requestAnimationFrame(function() {
+                overlay.classList.add('active');
+                renderStep();
+            });
+        }
+
+        // 窗口 resize 时重新定位
+        var resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (overlay.classList.contains('active')) {
+                    renderStep();
+                }
+            }, 100);
+        });
+
+        // ESC 关闭引导
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && overlay.classList.contains('active')) {
+                finish();
+            }
+        });
+
+        // 点击遮罩（黑色空白区域）关闭引导
+        mask.addEventListener('click', function() {
+            finish();
+        });
+
+        // 页面加载 2 秒后开始引导
+        setTimeout(start, 2000);
     })();
     </script>
 

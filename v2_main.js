@@ -9,6 +9,29 @@ window.APP = (function() {
 
     // ===== 内置预制模板 =====
     const BUILT_IN_TEMPLATES = [];
+    // 内置模板文件列表（将通过 fetch 异步加载）
+    const BUILT_IN_TEMPLATE_FILES = [
+        '脑洞秀宣发案例.edtpl.json'
+    ];
+    // 异步加载内置模板文件
+    async function loadBuiltInTemplateFiles() {
+        for (const file of BUILT_IN_TEMPLATE_FILES) {
+            try {
+                const resp = await fetch(file);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                if (data && data.sections && Array.isArray(data.sections)) {
+                    BUILT_IN_TEMPLATES.push({
+                        name: data.name || file.replace(/\.edtpl\.json$|\.json$/, ''),
+                        bgColor: data.bgColor || '',
+                        sections: data.sections
+                    });
+                }
+            } catch (e) {
+                console.warn('加载内置模板失败:', file, e);
+            }
+        }
+    }
 
     // ===== 用户预制模板（持久化到 IndexedDB，作为预制模板显示）=====
     let userPresetTemplates = [];
@@ -2302,7 +2325,33 @@ window.APP = (function() {
         list.innerHTML = html;
         // 内置模板点击
         list.querySelectorAll('.template-modal-item[data-builtin]').forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
+                // 导出内置模板
+                if (e.target.dataset.exportBuiltin !== undefined) {
+                    const idx = parseInt(e.target.dataset.exportBuiltin);
+                    const tpl = BUILT_IN_TEMPLATES[idx];
+                    if (!tpl) return;
+                    const exportData = {
+                        _format: 'EasyDesign_Template_v1',
+                        name: tpl.name,
+                        bgColor: tpl.bgColor || '',
+                        createdAt: new Date().toISOString(),
+                        exportedAt: new Date().toISOString(),
+                        sections: tpl.sections
+                    };
+                    const json = JSON.stringify(exportData);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = (tpl.name || '模板') + '.edtpl.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast('模板已导出');
+                    return;
+                }
                 const idx = parseInt(item.dataset.builtin);
                 loadBuiltInTemplate(BUILT_IN_TEMPLATES[idx]);
                 document.getElementById('templateModal').classList.remove('show');
@@ -2429,6 +2478,13 @@ window.APP = (function() {
     // 启动
     renderBgColorGrid();
     initDefault();
+    // 先加载内置模板文件，再加载用户预制模板
+    loadBuiltInTemplateFiles().then(() => {
+        console.log('内置模板已加载:', BUILT_IN_TEMPLATES.length, '个');
+        renderTemplateModal();
+    }).catch(err => {
+        console.warn('加载内置模板出错:', err);
+    });
     // 异步加载用户预制模板，并自动迁移已有的"公众号长图_QQ脑洞秀"模板
     loadUserPresets().then(async () => {
         console.log('用户预制模板已加载:', userPresetTemplates.length, '个');
@@ -2485,6 +2541,8 @@ window.APP = (function() {
         set currentMode(v) { currentMode = v; },
         get currentMode() { return currentMode; },
         render, renderGlobalPanel, renderLocalPanel, renderTextContent, escapeHtml, getSectionSummary, showToast, getMediaTypeFromData,
-        saveAsUserPreset, loadUserPresets, exportTemplate, exportCurrentDesign, importTemplateFromFile
+        saveAsUserPreset, loadUserPresets, exportTemplate, exportCurrentDesign, importTemplateFromFile,
+        get stickerDataURLCache() { return stickerDataURLCache; },
+        STICKER_BASE: 'stickers/main/'
     };
 })();

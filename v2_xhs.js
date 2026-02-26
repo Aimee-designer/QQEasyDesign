@@ -172,42 +172,43 @@
             }
             if (coverSubtext) { const sub = document.createElement('div'); sub.className = 'xhs-cover-subtitle'; sub.textContent = coverSubtext; content.appendChild(sub); }
         } else {
+            // 收集当前页面所有可见元素（带 section 信息）
+            const allElements = [];
             for (const sId of page.sectionIds) {
                 const s = APP.sections.find(sec => sec.id === sId);
                 if (!s || s.hidden) continue;
-                const sDiv = document.createElement('div');
-                sDiv.className = 'xhs-content-section';
                 for (const el of s.elements) {
-                    if (el.hidden) continue;
+                    if (!el.hidden) allElements.push(el);
+                }
+            }
+            // 将连续图片元素分组，其他元素单独为一组
+            const groups = [];
+            let imgBuf = [];
+            function flushImgBuf() {
+                if (imgBuf.length > 0) { groups.push({ type: 'image-grid', items: [...imgBuf] }); imgBuf = []; }
+            }
+            for (const el of allElements) {
+                if (el.type === 'image' && (el.imageData || el.lottieData)) {
+                    imgBuf.push(el);
+                } else {
+                    flushImgBuf();
+                    groups.push({ type: 'single', el });
+                }
+            }
+            flushImgBuf();
+
+            const sDiv = document.createElement('div');
+            sDiv.className = 'xhs-content-section';
+
+            for (const group of groups) {
+                if (group.type === 'single') {
+                    const el = group.el;
                     const eDiv = document.createElement('div');
                     switch (el.type) {
                         case 'h1': eDiv.className = 'xhs-el-h1'; eDiv.innerHTML = el.richHtml || APP.escapeHtml(el.content || ''); break;
                         case 'subtitle': eDiv.className = 'xhs-el-subtitle'; eDiv.innerHTML = el.richHtml || APP.escapeHtml(el.content || ''); break;
                         case 'body': eDiv.className = 'xhs-el-body'; eDiv.innerHTML = el.richHtml || APP.renderTextContent(el.content || ''); break;
                         case 'note': eDiv.className = 'xhs-el-note'; eDiv.innerHTML = el.richHtml || APP.renderTextContent(el.content || ''); break;
-                        case 'image':
-                            if (el.imageData || el.lottieData) {
-                                eDiv.className = 'xhs-el-image';
-                                const mType = APP.getMediaTypeFromData ? APP.getMediaTypeFromData(el) : 'image';
-                                if (mType === 'video') {
-                                    const vid = document.createElement('video'); vid.src = el.imageData;
-                                    vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
-                                    vid.style.width = (el.imageScale || 100) + '%'; vid.style.borderRadius = '16px';
-                                    eDiv.appendChild(vid);
-                                } else if (mType === 'lottie' && el.lottieData) {
-                                    const lp = document.createElement('lottie-player');
-                                    lp.setAttribute('autoplay', ''); lp.setAttribute('loop', ''); lp.setAttribute('mode', 'normal');
-                                    lp.style.width = (el.imageScale || 100) + '%';
-                                    try { lp.load(JSON.parse(el.lottieData)); } catch(e2) { lp.setAttribute('src', 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(el.lottieData)))); }
-                                    eDiv.appendChild(lp);
-                                } else {
-                                    const img = document.createElement('img');
-                                    img.src = el.imageData;
-                                    img.style.width = (el.imageScale || 100) + '%';
-                                    eDiv.appendChild(img);
-                                }
-                            }
-                            break;
                         case 'search':
                             eDiv.className = 'xhs-el-search';
                             const sc = el.searchColor || '#0099FF';
@@ -219,14 +220,51 @@
                                 eDiv.style.textAlign = 'center';
                                 eDiv.style.marginBottom = '24px';
                                 const stickerSize = Math.round((el.stickerSize || 120) * (1242 / 375));
-                                eDiv.innerHTML = `<img src="表情包/表情主图/${el.stickerFile}" style="width:${stickerSize}px;height:${stickerSize}px;object-fit:contain;">`;
+                                const stickerSrc = el.stickerDataURL
+                                    || (APP.stickerDataURLCache && APP.stickerDataURLCache[el.stickerFile])
+                                    || (APP.STICKER_BASE + el.stickerFile);
+                                eDiv.innerHTML = `<img src="${stickerSrc}" style="width:${stickerSize}px;height:${stickerSize}px;object-fit:contain;">`;
                             }
                             break;
                     }
                     if (eDiv.className) sDiv.appendChild(eDiv);
+                } else {
+                    // image-grid: 渲染连续图片为网格
+                    const items = group.items;
+                    const gridDiv = document.createElement('div');
+                    const count = Math.min(items.length, 6);
+                    const layoutClass = count === 1 ? 'xhs-img-grid-1'
+                        : count === 2 ? 'xhs-img-grid-2'
+                        : count === 3 ? 'xhs-img-grid-3'
+                        : count === 4 ? 'xhs-img-grid-4'
+                        : 'xhs-img-grid-5plus';
+                    gridDiv.className = 'xhs-img-grid ' + layoutClass;
+
+                    for (let gi = 0; gi < count; gi++) {
+                        const el = items[gi];
+                        const cell = document.createElement('div');
+                        cell.className = 'xhs-img-grid-cell';
+                        const mType = APP.getMediaTypeFromData ? APP.getMediaTypeFromData(el) : 'image';
+                        if (mType === 'video') {
+                            const vid = document.createElement('video'); vid.src = el.imageData;
+                            vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
+                            cell.appendChild(vid);
+                        } else if (mType === 'lottie' && el.lottieData) {
+                            const lp = document.createElement('lottie-player');
+                            lp.setAttribute('autoplay', ''); lp.setAttribute('loop', ''); lp.setAttribute('mode', 'normal');
+                            try { lp.load(JSON.parse(el.lottieData)); } catch(e2) { lp.setAttribute('src', 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(el.lottieData)))); }
+                            cell.appendChild(lp);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = el.imageData;
+                            cell.appendChild(img);
+                        }
+                        gridDiv.appendChild(cell);
+                    }
+                    sDiv.appendChild(gridDiv);
                 }
-                content.appendChild(sDiv);
             }
+            content.appendChild(sDiv);
         }
         const pn = document.createElement('div');
         pn.className = 'xhs-page-number';
@@ -341,6 +379,12 @@
                 pageContent.style.width = '1242px';
                 pageContent.style.height = '1660px';
                 container.appendChild(pageContent);
+                // 等待所有图片加载完毕再截图
+                const imgs = pageContent.querySelectorAll('img');
+                await Promise.all([...imgs].map(img => {
+                    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                }));
                 await new Promise(r => setTimeout(r, 200));
                 const canvas = await html2canvas(pageContent, { width: 1242, height: 1660, scale: 1, useCORS: true, allowTaint: false, backgroundColor: null });
                 const link = document.createElement('a');
